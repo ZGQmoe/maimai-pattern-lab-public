@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>maimai 配置练习检索</title><link rel="stylesheet" href="style.css">
+<main><h1>maimai 配置练习检索</h1><p>功能原型：仅检索导入谱面与原创样例，未连接实际曲目数据库。</p>
+<form id="search"><fieldset><legend>检索条件</legend>
+<label>想练习的配置 <select id="family"><option value="全部">全部已支持配置</option><option value="海底谭">海底谭配置 / Slide–Tap 交织（待研究）</option><option value="交互">交互 / Trill</option><option value="纵连">纵连 / Jack</option><option value="多重 Slide">多重 Slide（待研究）</option><option>基础 Slide</option></select></label>
+<label>目标等级 <select id="filter"><option>全部</option><option>12</option><option>12+</option><option>13</option><option>13+</option><option>14</option></select></label>
+<label>练习策略 <select id="strategy"><option value="all">浏览全部负荷</option><option value="easy">略简单，熟悉配置</option><option value="same">同等级，巩固配置</option><option value="hard">略困难，挑战配置</option></select></label>
+<button>检索片段</button></fieldset></form>
+<p id="status" role="status"></p>
+<h2>练习库</h2><p id="library"></p><button id="demo">加载原创样例</button> <button id="export">导出练习库</button>
+<details><summary>导入谱面</summary><p>仅导入有权使用的谱面。谱面在本机解析，不会上传。导入库可通过文件转移设备。</p>
+<label>选择文件 <input type="file" id="files" multiple accept=".txt,.simai,.json"></label>
+<label>粘贴单谱 Simai <textarea id="source"></textarea></label><label>曲名 <input id="title" value="我的练习谱"></label><label>单谱等级 <select id="level"><option>12</option><option>12+</option><option>13</option><option>13+</option><option>14</option></select></label><button id="add">解析并加入</button></details>
+<p id="import-status" role="status"></p>
+<h2>片段结果</h2><p id="reference"></p><button id="clear" disabled>清除参考片段</button><ol id="results"></ol>
+<h2>参考片段详情</h2><div id="detail"></div>
+<details><summary>支持范围</summary><p>基础纵连、交互和单段 Slide 已支持；复杂 Simai 语法会报错。海底谭/Slide–Tap 交织与多重 Slide 是待研究入口。</p><p>练习策略暂以所选片段为参考。负荷低于 0.9 倍为略简单，0.9–1.1 倍为接近，高于 1.1 倍为略困难；均为未校准估计。整曲等级单独筛选，局部适合不代表整曲适合。</p></details>
+<p><a href="https://github.com/ZGQmoe/maimai-pattern-lab-public">源码、需求与交接</a></p></main><script type="module" src="app.js"></script>
