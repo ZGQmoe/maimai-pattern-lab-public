@@ -1,6 +1,6 @@
 # Mai Pattern Lab
 
-开发前必读：[需求基准](REQUIREMENTS.md) → [项目分工](PROJECT.md)。首次从 Cloud 接手见 [Cloud 交接](HANDOFF.md)。历史想法的公开摘要或私有原始记录见 [想法记录](IDEAS-RECORD.md)。当前 UI 是黑白功能框架，视觉设计后置。
+开发前必读：[需求基准](REQUIREMENTS.md) → [项目分工](PROJECT.md)。首次接手见 [Claude × Codex 交接](HANDOFF.md)。历史想法见 [公开摘要](IDEAS-RECORD.md)。当前 UI 是黑白功能框架，视觉设计后置。
 
 maimai DX 配置识别与渐进练习搜索 MVP。静态响应式网页，谱面在浏览器解析，不需要 API key、账号或服务器数据库。
 
