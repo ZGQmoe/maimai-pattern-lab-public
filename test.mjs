@@ -20,3 +20,12 @@ test('practice strategy uses reference load, and unsupported choices stay empty'
  assert.equal(searchSegments(list,{...options,level:'14'}).items.length,0);
  assert.match(searchSegments(list,{...options,family:'海底谭'}).message,/待研究/);
 });
+test('arc slide < > direction follows start half under rotation and mirror (R02/A03)',()=>{
+ // Simai: '>' is clockwise from 7/8/1/2 and counter-clockwise from 3/4/5/6; '<' is the reverse.
+ const seg=body=>analyze(p(body))[0];
+ const cwShort=seg('(120){4}1>3[4:1],E'),ccwLong=seg('(120){4}5>7[4:1],E');
+ assert.notEqual(cwShort.signature,ccwLong.signature);
+ assert.equal(searchSegments([cwShort,ccwLong],{family:'基础 Slide',level:'12',strategy:'all',reference:cwShort}).items.length,0);
+ assert.equal(seg('(120){4}1<7[4:1],E').signature,seg('(120){4}5>3[4:1],E').signature);
+ assert.equal(cwShort.signature,seg('(120){4}1<7[4:1],E').signature);
+});

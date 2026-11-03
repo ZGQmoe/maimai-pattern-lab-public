@@ -35,13 +35,16 @@ export function parse(chart){
  return {...chart,notes,warnings,duration:t};
 }
 const lane=n=>/^[1-8]$/.test(n.pos)?+n.pos-1:null;
-const mirror=s=>({'<':'>','>':'<',p:'q',q:'p',s:'z',z:'s'}[s]||s);
+const mirror=s=>({cw:'ccw',ccw:'cw',p:'q',q:'p',s:'z',z:'s'}[s]||s);
+// Simai '>' is clockwise from 7/8/1/2 and counter-clockwise from 3/4/5/6; '<' is the reverse.
+// Convert to absolute direction before rotation/mirror so the symbol does not follow the start.
+const ring=(shape,p)=>shape!=='<'&&shape!=='>'||p===null?shape:((p+2)%8>=4)===(shape==='>')?'ccw':'cw';
 export function signature(notes){
  const first=notes[0].beat;const span=Math.max(.001,notes.at(-1).beat-first);
  const variants=[];
  for(const flip of [1,-1])for(let rot=0;rot<8;rot++)variants.push(notes.map(n=>{
   const p=lane(n),e=/^[1-8]$/.test(n.end)?+n.end-1:null;
-  return [Math.round((n.beat-first)/span*24),n.kind,p===null?n.pos:mod(p*flip+rot),n.shape?(flip===-1?mirror(n.shape):n.shape):'',e===null?n.end:mod(e*flip+rot)].join(':');
+  return [Math.round((n.beat-first)/span*24),n.kind,p===null?n.pos:mod(p*flip+rot),n.shape?(flip===-1?mirror(ring(n.shape,p)):ring(n.shape,p)):'',e===null?n.end:mod(e*flip+rot)].join(':');
  }).join('|'));
  return variants.sort()[0];
 }
