@@ -47,6 +47,11 @@ export function signature(notes){
 }
 export function analyze(chart){
  const ns=chart.notes,segments=[];
+ const singleTapLane=i=>{
+  const note=ns[i];
+  if(note.kind!=='tap'||ns[i-1]?.slot===note.slot||ns[i+1]?.slot===note.slot)return null;
+  return lane(note);
+ };
  // ponytail: bounded scan for <=15k notes; replace with interval index if measured latency warrants it.
  const add=(a,b,family)=>{
   const selected=ns.slice(a,b),start=selected[0].t,end=Math.max(...selected.map(n=>n.t+n.wait+n.duration));
@@ -58,13 +63,14 @@ export function analyze(chart){
   segments.push({id:chart.title+chart.difficulty+':'+a+':'+family,chart,family,start,end,duration,density,interference,context,load,notes:selected,signature:signature(selected),index:a});
  };
  for(let i=0;i<ns.length;){
-  const p=lane(ns[i]);let j=i+1;
-  if(p!==null&&ns[i].kind==='tap')while(j<ns.length&&ns[j].kind==='tap'&&lane(ns[j])===p&&ns[j].t>ns[j-1].t&&ns[j].t-ns[j-1].t<=.6)j++;
+  const p=singleTapLane(i);let j=i+1;
+  if(p!==null)while(j<ns.length&&singleTapLane(j)===p&&ns[j].t>ns[j-1].t&&ns[j].t-ns[j-1].t<=.6)j++;
   if(j-i>=4){add(i,j,'纵连');i=j;}else i++;
  }
- for(let i=0;i+3<ns.length;){let j=i+2;const a=lane(ns[i]),b=lane(ns[i+1]);
-  if(a!==null&&b!==null&&a!==b)while(j<ns.length&&ns[j].kind==='tap'&&lane(ns[j])===((j-i)%2===0?a:b)&&ns[j].t>ns[j-1].t&&ns[j].t-ns[j-1].t<=.6)j++;
-  if(j-i>=4&&ns[i].kind==='tap'&&ns[i+1].kind==='tap'&&ns[i+1].t>ns[i].t&&ns[i+1].t-ns[i].t<=.6){add(i,j,'交互');i=j;}else i++;
+ for(let i=0;i+3<ns.length;){let j=i+2;const a=singleTapLane(i),b=singleTapLane(i+1);
+  if(a!==null&&b!==null&&a!==b&&ns[i+1].t>ns[i].t&&ns[i+1].t-ns[i].t<=.6)
+   while(j<ns.length&&singleTapLane(j)===((j-i)%2===0?a:b)&&ns[j].t>ns[j-1].t&&ns[j].t-ns[j-1].t<=.6)j++;
+  if(j-i>=4){add(i,j,'交互');i=j;}else i++;
  }
  ns.forEach((n,i)=>{if(n.kind==='slide')add(i,i+1,'基础 Slide');});
  return segments;
