@@ -15,26 +15,46 @@ function ingest(items){
 }
 function render(){
  $('library').textContent=`${charts.length} 张谱面，${segments.length} 个片段。原创样例的等级仅用于演示。`;
- $('reference').textContent=reference?`参考：${reference.chart.title} / ${reference.family} / ${time(reference.start)}，模型负荷 ${reference.load.toFixed(1)}。`:'尚未选择参考片段。';
+ $('export').disabled=!charts.length;
+ $('empty-state').hidden=submitted;
+ $('reference-panel').hidden=!reference;
  $('clear').disabled=!reference;
  const list=$('results');list.replaceChildren();
  $('detail').replaceChildren();
  if(reference){
   const s=reference;
+  $('reference').textContent=`参考 · ${s.chart.title} / ${s.family} / ${time(s.start)} · 模型负荷 ${s.load.toFixed(1)}`;
   $('detail').append(node('p',`密度 ${s.density.toFixed(2)} Note/秒；持续 ${s.duration.toFixed(2)} 秒；干扰 ${s.interference} Note；前后上下文 ${s.context.toFixed(1)} Note/秒。模型估计，不自动标注为难点。`),node('pre',s.notes.map(n=>`${time(n.t)}  ${n.raw}`).join('\n')));
  }
- if(!submitted){$('status').textContent='导入谱面或加载样例后，选择条件并检索。';return;}
+ if(!submitted)return;
  const {items,message}=searchSegments(segments,{...query,reference});
- $('status').textContent=message||`找到 ${items.length} 段。按局部模型负荷由低到高排列。`;
- if(!items.length){list.append(node('li','没有匹配片段。'));return;}
+ let summary=`找到 ${items.length} 段 · 按局部模型负荷排序`;
+ if(!items.length){
+  summary='没有匹配片段。';
+  if(!charts.length)summary='练习库为空。请加载原创样例或导入谱面。';
+  else if(query.level!=='全部'&&!charts.some(chart=>chart.level===query.level))summary=`练习库里还没有 ${query.level} 级谱面。`;
+ }
+ $('status').textContent=[message,summary].filter(Boolean).join(' ');
  for(const {segment:s,sim,ratio} of items){
-  const li=node('li',`${s.chart.title} / ${s.chart.level} / ${s.family} / ${time(s.start)}–${time(s.end)} / 模型负荷 ${s.load.toFixed(1)}。`);
-  if(sim!==null)li.append(node('span',` 同类结构相似度 ${Math.round(sim*100)}%；参考负荷的 ${ratio.toFixed(2)} 倍。`));
-  const b=node('button','设为参考并查看');b.type='button';b.onclick=()=>{reference=s;render();$('clear').focus();};li.append(' ',b);list.append(li);
+  const li=node('li','');
+  const title=node('div','');title.className='track-title';
+  const badge=node('span',s.chart.level);badge.className='level-badge';
+  title.append(badge,node('strong',s.chart.title));
+  li.append(title,node('p',`${s.family} · ${time(s.start)}–${time(s.end)} · 模型负荷 ${s.load.toFixed(1)}`));
+  if(sim!==null)li.append(node('p',`结构相似度 ${Math.round(sim*100)}% · 参考负荷的 ${ratio.toFixed(2)} 倍`));
+  const b=node('button','设为参考并查看');b.type='button';b.className='button compact';
+  b.onclick=()=>{reference=s;render();$('clear').focus();};
+  li.append(b);list.append(li);
  }
 }
-$('search').onsubmit=e=>{e.preventDefault();submitted=true;query={family:$('family').value,level:$('filter').value,strategy:$('strategy').value};render();};
-$('clear').onclick=()=>{reference=null;render();$('family').focus();};
+$('search').onsubmit=e=>{
+ e.preventDefault();
+ submitted=true;
+ query=Object.fromEntries(new FormData(e.currentTarget));
+ render();
+ $('results-title').focus();
+};
+$('clear').onclick=()=>{reference=null;render();$('results-title').focus();};
 $('demo').onclick=()=>{if(!loaded){loaded=true;ingest(demos);}else $('import-status').textContent='原创样例已加入。';};
 const report=e=>$('import-status').textContent=e.message;
 $('add').onclick=()=>{try{ingest(readCharts($('source').value,$('title').value,$('level').value));}catch(e){report(e);}};
