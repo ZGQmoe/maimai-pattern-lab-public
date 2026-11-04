@@ -20,3 +20,19 @@ test('practice strategy uses reference load, and unsupported choices stay empty'
  assert.equal(searchSegments(list,{...options,level:'14'}).items.length,0);
  assert.match(searchSegments(list,{...options,family:'海底谭'}).message,/待研究/);
 });
+
+test('ADX reads chart text from song folders and skips media', async () => {
+ const {BlobWriter,TextReader,ZipWriter} = await import('./dist/vendor/zip-native.min.js');
+ const {readAdx} = await import('./dist/adx.js');
+ const zip = new ZipWriter(new BlobWriter(), {useWebWorkers:false});
+ await zip.add('levels/a/MaiData.txt',new TextReader('&title=测试 A\n&first=0.25\n&lv_5=13\n&inote_5=(120){16}1,5,1,5,E'));
+ await zip.add('levels/a/track.ogg',new TextReader('not a chart'));
+ await zip.add('levels/b/maidata.txt',new TextReader('&lv_4=9\n&inote_4=(120){16}1,1,1,1,E'));
+ await zip.add('levels/c/maidata.txt',new TextReader('a broken chart'));
+ const result = await readAdx(await zip.close());
+ assert.deepEqual(result.charts.map(chart=>[chart.title,chart.level,chart.difficulty]), [['测试 A','13','inote_5'],['b','9','inote_4']]);
+ assert.deepEqual(result.errors,['c：缺少 inote 谱面字段']);
+ assert.equal(analyze(parse(result.charts[0]))[0].start,.25);
+ assert.equal(analyze(parse(result.charts[1]))[0].family,'纵连');
+ await assert.rejects(readAdx(new Blob(['invalid ZIP'])));
+});

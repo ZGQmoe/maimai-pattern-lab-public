@@ -6,7 +6,16 @@ maimai DX 配置识别与渐进练习搜索 MVP。静态响应式网页，谱面
 
 ## 运行和验证
 
-Node 18+：`node --test test.mjs`。任意静态服务器指向 `dist/`（例如 `python3 -m http.server 8080 -d dist`）。部署可使用 Sites、GitHub Pages、Cloudflare Pages 或其他静态托管。
+Node 22+：`node --test test.mjs`。任意静态服务器指向 `dist/`（例如 `python3 -m http.server 8080 -d dist`）。部署可使用 Sites、GitHub Pages、Cloudflare Pages 或其他静态托管。
+
+## AstroDX 谱面输入与识别
+
+- [AstroDX 的 ADX 指南](https://wiki.astrodx.com/cn/install/android)说明 `.adx` 使用 ZIP 容器。可以从 [ADX 谱面资源](https://adxdls.saop.cc/) 查找包，或把有权使用的 Simai 谱面文件放进曲目目录再打包。该目录的站点代码、目录数据和实际谱面分别授权，详见[来源说明](https://github.com/AdingApkgg/adx-dl#许可与署名)。
+- 导入在浏览器内完成，仅读取包中的 `maidata.txt`，跳过音源、封面、视频和合集清单。每包上限 100 MB、100 份谱面文本、100 张难度谱。常见 ZIP 压缩使用本地 vendored [zip.js 2.24.0](https://github.com/gildas-lormeau/zip.js/releases/tag/v2.24.0)，随附 BSD-3-Clause 许可。压缩包读取和 Simai 语法解析分开报告。
+- `&title`、`&lv_n` 和 `&inote_n` 区分曲目、标注等级和难度谱。等级只作筛选。当前固定等级键为 12 到 14，其他等级通过「全部」浏览。
+- `&first`、BPM、细分和时间格把每个 Note 映射到拍位与时间。Tap 键位序列可找同键重复或两键交替，同时押应按同一时间格处理。用旋转、镜像和相对节奏对齐比较结构，另算以秒为单位的速度和密度。
+- Slide 起点、终点、路径符号、等待与时值可构造活动区间。若区间内穿插 Tap，可形成 Slide–Tap 交织候选。重叠的 Slide 区间可形成多重 Slide 候选。这两个方向仍需用样本确定规则边界，文件也不提供真实手法或玩家成绩。[Simai Slide 规范](https://w.atwiki.jp/simai/pages/23.html)
+- 用 [chika3742 的 Synthesis. 自制谱](https://github.com/chika3742/majdata-charts/tree/main/synthesis)复核了曲名、等级和谱面字段。当前基础解析在第一格的链式 Slide 报错。ADX 封包兼容与谱面语法兼容分别验收。
 
 ## 已实现
 
