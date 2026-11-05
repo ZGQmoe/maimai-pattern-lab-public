@@ -1,4 +1,5 @@
 import {readCharts,parse,analyze,demos,levels,searchSegments} from './core.js';
+import {chartData,loadCharts,saveCharts,clearCharts} from './library.js';
 
 const $ = id => document.getElementById(id);
 const node = (tag,text) => {
@@ -20,27 +21,39 @@ const levelChoices = ['全部', ...levels].map(value => ({
 }));
 const chartTypes = ['EASY','BASIC','ADVANCED','EXPERT','MASTER','Re:MASTER','UTAGE'];
 const charts = [], segments = [];
-let stage = 0, familyIndex = 0, levelIndex = 0, trackIndex = 0, reference = null, loaded = false;
+const chartKeys = new Set();
+const pendingCharts = new Map();
+let stage = 0, familyIndex = 0, levelIndex = 0, trackIndex = 0, reference = null;
 let cardCount = 0, currentTrack = null;
+let libraryBusy = true;
 
 function ingest(items, errors = []) {
  if (!Array.isArray(items) || items.length > 100) throw Error('单次导入最多 100 张难度谱面');
+ const records = [];
  let added = 0;
  for (const chart of items) {
   try {
-   if (!chart || typeof chart.body !== 'string' || chart.body.length > 500000 ||
+   if (!chart || typeof chart.title !== 'string' || typeof chart.body !== 'string' || chart.body.length > 500000 ||
+       (chart.difficulty !== undefined && typeof chart.difficulty !== 'string') ||
        !Number.isFinite(chart.offset ?? 0) || typeof chart.level !== 'string' || !/^(?:(?:[1-9]|1[0-5])(?:\+|\.\d+)?|未知)$/.test(chart.level)) {
     throw Error('谱面内容、偏移或等级无效');
+   }
+   const key = JSON.stringify(chartData(chart));
+   if (chartKeys.has(key)) {
+    records.push(chartData(chart));
+    continue;
    }
    const parsed = parse(chart);
    segments.push(...analyze(parsed));
    charts.push(parsed);
+   chartKeys.add(key);
+   records.push(chartData(parsed));
    added++;
   } catch (error) {
    errors.push((chart?.title ?? '未知曲目') + '：' + error.message);
   }
  }
- return {added, errors};
+ return {added, errors, records};
 }
 
 function jacket(element, card) {
@@ -65,7 +78,8 @@ function jacket(element, card) {
 
 function render() {
  $('library').textContent = charts.length + ' 张谱面 · ' + segments.length + ' 个片段。原创样例的等级仅用于演示。';
- $('export').disabled = !charts.length;
+ $('export').disabled = libraryBusy || !charts.length;
+ $('reset-library').disabled = libraryBusy || !charts.length;
  const family = families[familyIndex];
  const level = levelChoices[levelIndex].value;
  let cards = families, index = familyIndex;
@@ -167,60 +181,110 @@ function report(added, errors = []) {
  $('import-status').textContent = '加入 ' + added + ' 张。' + errors.join('；');
  render();
 }
-$('demo').onclick = () => {
- if (loaded) {
-  $('import-status').textContent = '原创样例已加入。';
-  return;
+async function storeCharts(items, errors = []) {
+ const result = ingest(items,errors);
+ for (const record of result.records) pendingCharts.set(JSON.stringify(record),record);
+ if (pendingCharts.size) {
+  try {
+   await saveCharts([...pendingCharts.values()]);
+   pendingCharts.clear();
+   $('storage-status').textContent = '已保存到当前浏览器。可导出备份或跨设备转移。';
+  } catch {
+   $('storage-status').textContent = '本机保存失败，当前页面仍可使用这些谱面。请先导出备份。';
+  }
  }
- loaded = true;
- const result = ingest(demos);
- report(result.added,result.errors);
-};
-$('add').onclick = () => {
+ return result;
+}
+
+async function libraryAction(action) {
+ libraryBusy = true;
+ for (const id of ['demo','add','files']) $(id).disabled = true;
+ render();
  try {
-  const result = ingest(readCharts($('source').value,$('title').value,$('level').value));
-  report(result.added,result.errors);
+  await action();
  } catch (error) {
   report(0,[error.message]);
- }
-};
-$('files').onchange = async event => {
- const input = event.currentTarget;
- input.disabled = true;
- let added = 0;
- const errors = [];
- try {
-  for (const file of input.files) {
-   try {
-    let result;
-    if (/\.(?:adx|zip)$/i.test(file.name)) {
-     const {readAdx} = await import('./adx.js');
-     const pack = await readAdx(file);
-     result = ingest(pack.charts,pack.errors);
-    } else {
-     if (file.size > 500000) throw Error('谱面文本超过 500 KB');
-     const text = await file.text();
-     result = ingest(/\.json$/i.test(file.name) ? JSON.parse(text) : readCharts(text,file.name));
-    }
-    added += result.added;
-    errors.push(...result.errors);
-   } catch (error) {
-    errors.push(file.name + '：' + error.message);
-   }
-  }
-  report(added,errors);
  } finally {
-  input.value = '';
-  input.disabled = false;
+  libraryBusy = false;
+  for (const id of ['demo','add','files']) $(id).disabled = false;
+  render();
  }
+}
+
+$('demo').onclick = () => libraryAction(async () => {
+ const result = await storeCharts(demos);
+ if (!result.added && !result.errors.length) {
+  $('import-status').textContent = '原创样例已加入。';
+ } else {
+  report(result.added,result.errors);
+ }
+});
+$('add').onclick = () => libraryAction(async () => {
+ const result = await storeCharts(readCharts($('source').value,$('title').value,$('level').value));
+ report(result.added,result.errors);
+});
+$('files').onchange = event => {
+ const input = event.currentTarget;
+ return libraryAction(async () => {
+  let added = 0;
+  const errors = [];
+  try {
+   for (const file of input.files) {
+    try {
+     let result;
+     if (/\.(?:adx|zip)$/i.test(file.name)) {
+      const {readAdx} = await import('./adx.js');
+      const pack = await readAdx(file);
+      result = await storeCharts(pack.charts,pack.errors);
+     } else {
+      if (file.size > 500000) throw Error('谱面文本超过 500 KB');
+      const text = await file.text();
+      result = await storeCharts(/\.json$/i.test(file.name) ? JSON.parse(text) : readCharts(text,file.name));
+     }
+     added += result.added;
+     errors.push(...result.errors);
+    } catch (error) {
+     errors.push(file.name + '：' + error.message);
+    }
+   }
+   report(added,errors);
+  } finally {
+   input.value = '';
+  }
+ });
+};
+$('reset-library').onclick = () => {
+ if (!confirm('清空当前浏览器里的全部练习谱面？建议先导出备份。')) return;
+ return libraryAction(async () => {
+  await clearCharts();
+  charts.length = 0;
+  segments.length = 0;
+  chartKeys.clear();
+  pendingCharts.clear();
+  reference = null;
+  currentTrack = null;
+  trackIndex = 0;
+  $('storage-status').textContent = '本机练习库已清空。';
+  $('import-status').textContent = '';
+ });
 };
 $('export').onclick = () => {
- const data = charts.map(({title,level,body,offset,difficulty})=>({title,level,body,offset,difficulty}));
+ const data = charts.map(chartData);
  const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
  const link = node('a','');
  link.href = url;
- link.download = 'maimai-practice-library.json';
+ link.download = 'maikiri-library.json';
  link.click();
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-render();
+libraryAction(async () => {
+ try {
+  const records = await loadCharts();
+  const errors = [];
+  for (let index = 0; index < records.length; index += 100) ingest(records.slice(index,index + 100),errors);
+  $('storage-status').textContent = '练习库自动保存在当前浏览器。可导出备份或跨设备转移。';
+  if (errors.length) $('import-status').textContent = errors.join('；');
+ } catch {
+  $('storage-status').textContent = '无法读取本机练习库。当前页面可继续导入，请导出备份。';
+ }
+});

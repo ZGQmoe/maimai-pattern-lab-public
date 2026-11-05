@@ -1,4 +1,4 @@
-# maimai 配置练习工具 · Claude × Codex 交接
+# Maikiri · Claude × Codex 交接
 
 ## 从哪里开始
 

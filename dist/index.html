@@ -3,9 +3,10 @@
 <head>
  <meta charset="utf-8">
  <meta name="viewport" content="width=device-width, initial-scale=1">
- <meta name="description" content="按配置和等级检索 maimai 练习片段，管理本地谱面并查找 Simai 资源。">
- <title>Mai Pattern Lab · 配置练习台</title>
+ <meta name="description" content="Maikiri，来自 maimai × raikiri。将不会的配置斩断。按配置和等级选择练习片段，导入 ADX 谱面。">
+ <title>Maikiri · maimai 配置练习台</title>
  <link rel="stylesheet" href="style.css">
+ <link rel="icon" href="maikiri.svg" type="image/svg+xml">
 </head>
 <body>
 <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -35,7 +36,7 @@
 </svg>
 <header class="topbar">
  <div class="shell topbar-inner">
-  <a class="brand" href="#top"><svg aria-hidden="true"><use href="#mark-ring"/></svg><span>MAI<span class="brand-accent">/</span>LAB</span></a>
+  <a class="brand" href="#top"><img src="maikiri.svg" width="28" height="28" alt=""><span>MAI<span class="brand-accent">KIRI</span></span></a>
   <nav aria-label="页面导航"><a href="#practice">配置检索</a><a href="#library-panel">练习库</a><a href="#resources">谱面资源</a></nav>
   <span class="edition">PATTERN LAB</span>
  </div>
@@ -43,7 +44,7 @@
 <main class="shell" id="top">
  <section class="arcade" id="practice" aria-labelledby="hero-title">
   <header class="arcade-heading">
-   <div><span class="eyebrow">FREE PLAY / PRACTICE</span><h1 id="hero-title">maimai 配置练习台</h1></div>
+   <div><span class="eyebrow">FREE PLAY / PRACTICE</span><h1 id="hero-title">Maikiri</h1><p class="motto">将不会的配置斩断</p></div>
    <a class="button" id="adx-entry" href="#import-panel">导入 ADX</a>
   </header>
   <div class="cabinet" id="cabinet">
@@ -84,19 +85,21 @@
   <header class="panel-heading"><span class="step">03</span><div><span class="eyebrow">LOCAL LIBRARY</span><h2 id="library-title">练习库</h2></div></header>
   <p id="library" class="library-count"></p>
   <div class="library-actions">
-   <button id="demo" class="button primary" type="button">＋ 加载原创样例</button>
+   <button id="demo" class="button primary" type="button" disabled>＋ 加载原创样例</button>
    <button id="export" class="button" type="button" disabled>导出练习库</button>
+   <button id="reset-library" class="button" type="button" disabled>清空本机练习库</button>
   </div>
+  <p id="storage-status" class="status" role="status">正在恢复本机练习库…</p>
   <p id="import-status" class="status" role="status"></p>
   <details class="fold" id="import-panel">
    <summary>导入谱面 <span>ADX / ZIP / MAIDATA / JSON</span></summary>
    <p>优先选 AstroDX 的 .adx 或 .zip 谱面包。浏览器只读取包内的 maidata.txt，忽略音频、封面和视频。也可以直接导入谱面文本。</p>
-   <label for="files">选择文件 <input type="file" id="files" multiple accept=".adx,.zip,.txt,.simai,.json"></label>
+   <label for="files">选择文件 <input type="file" id="files" disabled multiple accept=".adx,.zip,.txt,.simai,.json"></label>
    <label for="source">粘贴单谱 Simai <textarea id="source" rows="3" spellcheck="false"></textarea></label>
    <div class="import-fields">
     <label for="title">曲名 <input id="title" value="我的练习谱"></label>
     <label for="level">单谱等级 <select id="level"><option>12</option><option>12+</option><option>13</option><option>13+</option><option>14</option></select></label>
-    <button id="add" class="button" type="button">解析并加入</button>
+    <button id="add" class="button" type="button" disabled>解析并加入</button>
    </div>
   </details>
  </section>
@@ -116,7 +119,7 @@
   <p>基础规则可检索连续单点纵连、交互和单段 Slide。海底谭与多重 Slide 暂待研究。部分 Simai 语法超出当前解析范围。</p>
   <p>选择参考片段后，练习策略按局部模型负荷比较。低于 0.9 倍为略简单，0.9–1.1 倍为接近，高于 1.1 倍为略困难。整曲等级单独筛选。</p>
  </details>
- <footer><span>MAI / LAB · 非官方练习工具</span><a target="_blank" rel="noopener noreferrer" href="https://github.com/ZGQmoe/maimai-pattern-lab-public">源码、需求与交接 ↗</a></footer>
+ <footer><span>Maikiri · maimai × raikiri</span><a target="_blank" rel="noopener noreferrer" href="https://github.com/ZGQmoe/maimai-pattern-lab-public">源码、需求与交接 ↗</a></footer>
 </main>
 <script type="module" src="app.js"></script>
 </body>

@@ -1,6 +1,8 @@
-# maimai 配置练习工具 · 项目交接
+# Maikiri · 项目交接
 
 每次工作先完整阅读 [REQUIREMENTS.md](REQUIREMENTS.md)，再读本文。历史想法摘要见 [IDEAS-RECORD.md](IDEAS-RECORD.md)。首次接手见 [HANDOFF.md](HANDOFF.md)。需求基准优先于本文旧版描述。
+
+正式名称 Maikiri，来自 maimai × raikiri，寓意“将不会的配置斩断”。
 
 目标：云端响应式网页供手机和电脑使用，GitHub 保存源码。当前交付为受限解析与可解释规则 MVP；发布和 GitHub 状态以本聊天最终回执为准。
 
