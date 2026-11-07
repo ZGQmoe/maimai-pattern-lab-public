@@ -1,1 +1,1 @@
-{"name":"mailab","private":true,"type":"module","scripts":{"test":"node --test test.mjs","start":"python3 -m http.server 8080 -d dist"}}
+{"name":"mailab","private":true,"type":"module","scripts":{"test":"node --test test.mjs","start":"python3 -m http.server 8080 -d dist","scan":"node tools/scan.mjs"}}

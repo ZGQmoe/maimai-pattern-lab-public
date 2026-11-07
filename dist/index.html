@@ -3,9 +3,9 @@
 <head>
  <meta charset="utf-8">
  <meta name="viewport" content="width=device-width, initial-scale=1">
- <meta name="description" content="Mailab · maimai 配置练习台。选择 12 及以上等级，浏览经典配置清单，导入 ADX 谱面。">
- <title>Mailab · maimai 配置练习台</title>
- <link rel="stylesheet" href="style.css?v=mailab-1">
+ <meta name="description" content="Mailab · maimai 局部配置检索。选择配置与 12–15 整谱等级，列出跨曲目命中片段并定位预览。">
+ <title>Mailab · maimai 配置检索</title>
+ <link rel="stylesheet" href="style.css?v=mailab-2">
  <link rel="icon" href="mailab.svg" type="image/svg+xml">
 </head>
 <body>
@@ -74,8 +74,8 @@
   </div>
   <p class="status screen-status" id="status" role="status"></p>
   <div class="console-actions">
-   <label for="strategy">OPTION · 练习策略
-    <select id="strategy"><option value="all">浏览全部负荷</option><option value="easy">略简单 · 熟悉配置</option><option value="same">同等级 · 巩固配置</option><option value="hard">略困难 · 挑战配置</option></select>
+   <label for="strategy">OPTION · 找相似（需参考片段）
+    <select id="strategy"><option value="all">不比较负荷</option><option value="easy">略简单 · 熟悉配置</option><option value="same">同等级 · 巩固配置</option><option value="hard">略困难 · 挑战配置</option></select>
    </label>
    <a href="#library-panel">练习库 / 加载原创样例 ↓</a>
   </div>
@@ -84,6 +84,50 @@
    <div id="detail"></div>
    <button id="clear" class="button compact" type="button">清除参考片段</button>
   </div>
+  <section class="results" id="results-panel" aria-labelledby="results-title">
+   <header class="results-heading">
+    <div><span class="eyebrow">RESULTS</span><h2 id="results-title">命中片段</h2></div>
+    <p id="results-summary" class="status" role="status"></p>
+   </header>
+   <details class="fold filters" id="filters-panel">
+    <summary>局部条件（可选）<span>只按命中片段自身的音符计算</span></summary>
+    <div class="filter-grid">
+     <label for="f-rate">平均速率 ≥（个/秒）<select id="f-rate"><option value="">不限</option><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option>16</option></select></label>
+     <label for="f-max-rate">平均速率 ≤（个/秒）<select id="f-max-rate"><option value="">不限</option><option>6</option><option>8</option><option>10</option><option>12</option><option>16</option></select></label>
+     <label for="f-count">音符数 ≥<select id="f-count"><option value="">不限</option><option>4</option><option>6</option><option>8</option><option>12</option><option>16</option></select></label>
+     <label for="f-rhythm">节奏<select id="f-rhythm"><option value="">不限</option><option value="even">等间隔</option><option value="uneven">不等间隔（混合细分）</option></select></label>
+     <label for="f-sort">排序<select id="f-sort"></select></label>
+     <fieldset class="spread" id="f-spread"><legend>交互跨度（仅交互）</legend>
+      <label><input type="checkbox" value="1"> 相邻</label><label><input type="checkbox" value="2"> 隔一键</label><label><input type="checkbox" value="3"> 隔两键</label><label><input type="checkbox" value="4"> 对侧</label>
+     </fieldset>
+    </div>
+    <p>平均速率 =（音符数 − 1）÷ 首尾 Note 时间差；等间隔指相邻间隔差 ≤ 5%。这些是谱面结构量，不是玩家实测难度，也不改变配置身份。</p>
+    <button id="f-reset" class="button compact" type="button">清除局部条件</button>
+   </details>
+   <section class="preview" id="preview-panel" aria-labelledby="preview-title" hidden tabindex="-1">
+    <header><h3 id="preview-title">Preview</h3><p id="preview-meta"></p></header>
+    <div class="preview-body">
+     <canvas id="preview-canvas" width="320" height="320" role="img" aria-label="片段预览圆屏"></canvas>
+     <div class="preview-side">
+      <p class="preview-clock"><strong id="preview-clock">0.00 秒</strong> · <span id="preview-phase"></span></p>
+      <input type="range" id="preview-scrub" aria-label="预览时间" min="0" max="1" step="0.01" value="0">
+      <p class="scrub-legend"><span class="band"></span> 目标范围 <span id="preview-range"></span></p>
+      <div class="preview-controls">
+       <button id="preview-play" class="button primary compact" type="button" aria-pressed="false">播放</button>
+       <button id="preview-replay" class="button compact" type="button">重播</button>
+       <button id="preview-back" class="button compact" type="button" aria-label="后退 0.05 秒">−0.05s</button>
+       <button id="preview-forward" class="button compact" type="button" aria-label="前进 0.05 秒">+0.05s</button>
+       <label for="preview-speed">速度<select id="preview-speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option></select></label>
+      </div>
+      <p class="legend"><i class="k-target"></i>目标 Note <i class="k-cross"></i>跨边界 Hold/Slide <i class="k-context"></i>前后文</p>
+      <p class="status" id="preview-note"></p>
+      <details class="fold"><summary>播放范围内的 Note</summary><pre id="preview-notes"></pre></details>
+     </div>
+    </div>
+   </section>
+   <ol class="result-list" id="result-list"></ol>
+   <button id="more-results" class="button" type="button" hidden>显示更多</button>
+  </section>
  </section>
 
  <section class="panel catalog" id="pattern-catalog" aria-labelledby="catalog-title">
@@ -102,6 +146,10 @@
   </div>
   <p id="storage-status" class="status" role="status">正在恢复本机练习库…</p>
   <p id="import-status" class="status" role="status"></p>
+  <details class="fold" id="coverage-panel">
+   <summary>扫描覆盖 <span id="coverage-brief"></span></summary>
+   <div id="coverage"></div>
+  </details>
   <details class="fold" id="import-panel">
    <summary>导入谱面 <span>ADX / ZIP / MAIDATA / JSON</span></summary>
    <p>优先选 AstroDX 的 .adx 或 .zip 谱面包。浏览器只读取包内的 maidata.txt，忽略音频、封面和视频。也可以直接导入谱面文本。</p>
@@ -126,12 +174,13 @@
  </section>
 
  <details class="fold help">
-  <summary>规则与练习策略</summary>
-  <p>专项检索支持连续单 Tap 纵连和两键交互。普通单点和基础 Slide 不作为专项选择。清单内其他配置均待研究，部分 Simai 语法也超出当前解析范围。</p>
-  <p>选择参考片段后，练习策略按局部模型负荷比较。低于 0.9 倍为略简单，0.9–1.1 倍为接近，高于 1.1 倍为略困难。整曲等级单独筛选。</p>
+  <summary>检索规则与预览说明</summary>
+  <p>专项检索支持连续单 Tap 纵连和两键交互。普通单点和基础 Slide 不作为专项选择。清单内其他配置均待研究，部分 Simai 语法也超出当前解析范围；解析失败的谱面不进入检索，是否含目标配置未知。</p>
+  <p>选配置和整谱等级即可列出命中片段；局部条件按片段自身的速率、音符数、节奏和交互跨度筛选。可选：选参考片段后，“找相似”按局部模型负荷比较，低于 0.9 倍为略简单，0.9–1.1 倍为接近，高于 1.1 倍为略困难；阈值是工程占位，不是实测。</p>
+  <p>Preview 只使用 Mailab 解析出的 Note，无音频。目标范围精确对应命中片段；播放范围在前后补充上下文，并包含跨越边界的 Hold、Slide 与星星头。弧形类 Slide 轨迹为近似绘制，不是判定轨迹。</p>
  </details>
  <footer><span>Mailab · PATTERN LAB</span><a target="_blank" rel="noopener noreferrer" href="https://github.com/ZGQmoe/maimai-pattern-lab-public">源码、需求与交接 ↗</a></footer>
 </main>
-<script type="module" src="app.js?v=mailab-1"></script>
+<script type="module" src="app.js?v=mailab-2"></script>
 </body>
 </html>

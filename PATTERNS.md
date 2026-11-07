@@ -22,7 +22,7 @@
 | 配置 | 当前状态 | 范围与待核点 | 来源 |
 |---|---|---|---|
 | 纵连 | 基础规则可检索 | 同键连续击打；当前规则只识别至少四个连续单 Tap，不含双押纵连。 | [舞萌简明教程 · 键位与星星](https://www.bilibili.com/opus/461149354380109054)、[wasllll · 配置术语（Tap 篇）](https://www.bilibili.com/video/BV1Lb421p7b5/) |
-| 交互 | 基础规则可检索 | 两个键位轮流出音符；当前规则只识别至少四个连续单 Tap，不能证明实际手序。 | [舞萌简明教程 · 键位与星星](https://www.bilibili.com/opus/461149354380109054)、[wasllll · 配置术语（Tap 篇）](https://www.bilibili.com/video/BV1Lb421p7b5/) |
+| 交互 | 基础规则可检索 | 两个键位轮流出音符；当前规则只识别至少四个连续单 Tap，不能证明实际手序。结果标注跨度变体（相邻/隔一键/隔两键/对侧，旋转镜像后不变）与等/不等间隔，可作筛选；这些是结构量，不是难度分级。 | [舞萌简明教程 · 键位与星星](https://www.bilibili.com/opus/461149354380109054)、[wasllll · 配置术语（Tap 篇）](https://www.bilibili.com/video/BV1Lb421p7b5/) |
 | 快速交互（高速交互） | 待研究 | 交互的速度专项。后续同时看间隔、持续与变速，不直接用整曲 BPM 划分。 | [高速交互发力教学](https://www.bilibili.com/video/BV1qMHFzYEbm/) |
 | 双押纵连（双纵） | 待研究 | 成对音符连续重复，与单 Tap 纵连分开研究。 | [舞萌简明教程 · 键位与星星](https://www.bilibili.com/opus/461149354380109054) |
 | 三角交互 | 待研究 | 社区术语候选；三键循环的具体边界待谱面样例确认。 | [wasllll · 配置术语（Tap 篇）](https://www.bilibili.com/video/BV1Lb421p7b5/) |
