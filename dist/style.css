@@ -277,5 +277,4 @@ h1 { margin: .12rem 0; color: #142d68; font-weight: 950; font-size: clamp(1.26re
  .resource-grid { grid-template-columns: 1fr; }
 }
 
-.motto { margin: .16rem 0 0; color: #173f75; font-size: clamp(.76rem,1.7vw,.95rem); font-weight: 750; }
 .brand-accent { margin: 0; }

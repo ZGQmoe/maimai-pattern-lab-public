@@ -3,7 +3,8 @@ const mod=n=>(n%8+8)%8;
 export function readCharts(text,name='导入谱面',level='12'){
  if(text.length>500000)throw Error('文件超过 500 KB，请分批导入');
  const fields={}; for(const m of text.replace(/^\uFEFF/,'').matchAll(/^&([^=\n]+)=([\s\S]*?)(?=^&|$(?![\s\S]))/gm))fields[m[1].trim()]=m[2].trim();
- const ids=Object.keys(fields).filter(k=>/^inote_\d+$/.test(k));
+ const ids=Object.keys(fields).filter(k=>/^inote_\d+$/.test(k)&&fields[k]);
+ if(!ids.length&&Object.keys(fields).some(k=>/^inote_\d+$/.test(k)))throw Error('没有非空的 inote 谱面字段');
  return ids.length?ids.map(k=>({title:fields.title||name,level:fields['lv_'+k.slice(6)]||'未知',body:fields[k],offset:Number(fields.first||0),difficulty:k})): [{title:name,level,body:text,offset:0,difficulty:'自定义'}];
 }
 export function parse(chart){
@@ -18,7 +19,9 @@ export function parse(chart){
   if(s){
    // Fail closed: advanced syntax must not silently become a plausible analysis.
    if(/[`*?!@$#]/.test(s.replace(/\[[^\]]*\]/g,'')))throw Error('第 '+(i+1)+' 格包含暂不支持的高级语法');
-   for(const token of s.split('/')){
+   const tokens=/^[1-8]+$/.test(s)?[...s]:s.split('/');
+   if(notes.length+tokens.length>15000)throw Error('Note 过多');
+   for(const token of tokens){
     if(!token)continue;
     const m=token.match(/^([1-8]|[ABDE][1-8]|C)([bx f]*)(?:(h)\[([^\]]+)\]|(-|<|>|\^|v|p|q|s|z|w)([1-8])\[([^\]]+)\])?$/);
     if(!m)throw Error('第 '+(i+1)+' 格无法解析：'+token+'。请查看支持范围。');
@@ -31,7 +34,6 @@ export function parse(chart){
   const step=240/bpm/division;t+=step;beat+=4/division;
  }
  if(!notes.length)throw Error('没有可分析的 Note');
- if(notes.length>15000)throw Error('Note 过多');
  return {...chart,notes,warnings,duration:t};
 }
 const lane=n=>/^[1-8]$/.test(n.pos)?+n.pos-1:null;

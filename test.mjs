@@ -42,18 +42,40 @@ test('practice strategy uses reference load, and unsupported choices stay empty'
  assert.match(searchSegments(list,{...options,family:'海底谭'}).message,/待研究/);
 });
 
+test('compact EACH preserves timing, slot boundaries and single-tap detection', () => {
+ for (const [compact, explicit] of [['12','1/2'],['123','1/2/3'],['12345678','1/2/3/4/5/6/7/8']]) {
+  const read = text => p('(120){16}'+text+',4,E').notes;
+  assert.deepEqual(read(compact),read(explicit));
+ }
+ for (const chord of ['13','31','1/3','3/1']) {
+  assert.deepEqual(analyze(p('(120){16}'+chord+',1,1,1,E')),[]);
+  assert.deepEqual(analyze(p('(120){16}'+chord+',5,1,5,E')),[]);
+  assert.equal(analyze(p('(120){16}'+chord+',1,1,1,1,E')).filter(s=>s.family==='纵连').length,1);
+ }
+ for (const body of ['12b','12h[4:1]','19']) assert.throws(()=>p('(120)'+body+',E'));
+ assert.throws(()=>p('(120)'+'1'.repeat(15001)+',E'),/Note 过多/);
+});
+
+test('blank maidata difficulties do not consume the import or fail valid siblings', () => {
+ const charts = readCharts('&title=有空难度的原创谱\n&inote_1=\n&lv_2=3\n&inote_2=  \n&lv_5=13\n&inote_5=(120){16}12,1,1,1,1,E');
+ assert.equal(charts.length,1);
+ assert.equal(charts[0].difficulty,'inote_5');
+ assert.equal(analyze(parse(charts[0]))[0].family,'纵连');
+ assert.throws(()=>readCharts('&inote_1=\n&inote_5=  '),/没有非空/);
+});
+
 test('ADX reads chart text from song folders and skips media', async () => {
  const {BlobWriter,TextReader,ZipWriter} = await import('./dist/vendor/zip-native.min.js');
  const {readAdx} = await import('./dist/adx.js');
  const zip = new ZipWriter(new BlobWriter(), {useWebWorkers:false});
- await zip.add('levels/a/MaiData.txt',new TextReader('&title=测试 A\n&first=0.25\n&lv_5=13\n&inote_5=(120){16}1,5,1,5,E'));
+ await zip.add('levels/a/MaiData.txt',new TextReader('&title=测试 A\n&first=0.25\n&inote_1=\n&lv_5=13\n&inote_5=(120){16}13,1,5,1,5,E'));
  await zip.add('levels/a/track.ogg',new TextReader('not a chart'));
  await zip.add('levels/b/maidata.txt',new TextReader('&lv_4=9\n&inote_4=(120){16}1,1,1,1,E'));
  await zip.add('levels/c/maidata.txt',new TextReader('a broken chart'));
  const result = await readAdx(await zip.close());
  assert.deepEqual(result.charts.map(chart=>[chart.title,chart.level,chart.difficulty]), [['测试 A','13','inote_5'],['b','9','inote_4']]);
  assert.deepEqual(result.errors,['c：缺少 inote 谱面字段']);
- assert.equal(analyze(parse(result.charts[0]))[0].start,.25);
+ assert.equal(analyze(parse(result.charts[0]))[0].start,.375);
  assert.equal(analyze(parse(result.charts[1]))[0].family,'纵连');
  await assert.rejects(readAdx(new Blob(['invalid ZIP'])));
 });

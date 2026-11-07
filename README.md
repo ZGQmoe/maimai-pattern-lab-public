@@ -2,7 +2,7 @@
 
 名字来自 **maimai × raikiri**。raikiri 是用户最喜欢的谱面，Maikiri 寓意“将不会的配置斩断”。
 
-开发前必读：[需求基准](REQUIREMENTS.md) → [项目分工](PROJECT.md)。首次接手见 [Claude × Codex 交接](HANDOFF.md)。历史想法见 [公开摘要](IDEAS-RECORD.md)。当前阶段优先搭建街机风格界面、配置分类和谱面资源入口。机器学习识别留待后续。
+开发前必读：[需求基准](REQUIREMENTS.md) → [项目分工](PROJECT.md)。首次接手见 [Claude × Codex 交接](HANDOFF.md)。历史想法见 [公开摘要](IDEAS-RECORD.md)。当前沿用 maimai 圆屏界面，重点完善谱面兼容性和规则识别。机器学习识别留待后续。
 
 maimai DX 配置识别与渐进练习搜索 MVP。静态响应式网页，谱面在浏览器解析，不需要 API key、账号或服务器数据库。
 
@@ -22,7 +22,7 @@ Node 22+：`node --test test.mjs`。任意静态服务器指向 `dist/`（例如
 ## 已实现
 
 - maidata 多 inote、lv、title、first 字段或受限单谱 Simai；支持筛选 12/12+/13/13+/14，原创样例仅覆盖 12–13+，等级只用于演示。
-- BPM、细分、Tap/Break/EX、Hold/Touch、单段基础 Slide，Note 时间与位置。
+- BPM、细分、Tap/Break/EX、Hold/Touch、单段基础 Slide，Note 时间与位置。纯 Tap 同时押支持 `12`、`123` 等省略斜线的简写，空白 `inote_n` 难度字段会被跳过。
 - 连续单点纵连、两位置交互、基础 Slide；8 个旋转及镜像规范化。
 - 按配置、等级检索片段；选择参考后可按局部负荷策略筛选，同类片段按负荷递增。
 - 解释密度、持续、干扰、前后上下文；练习库 JSON 导入导出；不上传谱面。
