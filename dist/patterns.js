@@ -1,0 +1,38 @@
+// Community names are a research directory, not a promise of automatic recognition.
+export const patternSources = {
+ terms: {title:'wasllll · 配置术语（Tap 篇）', url:'https://www.bilibili.com/video/BV1Lb421p7b5/'},
+ guide: {title:'舞萌简明教程 · 键位与星星', url:'https://www.bilibili.com/opus/461149354380109054'},
+ sea: {title:'4399guangguang · 海底谭配置教学', url:'https://www.bilibili.com/video/BV1vjpFe6Eed/'},
+ fast: {title:'高速交互发力教学', url:'https://www.bilibili.com/video/BV1qMHFzYEbm/'},
+ beat: {title:'HERA · 定拍段个人拆解', url:'https://www.bilibili.com/video/BV12F41197Xi/'},
+ deal: {title:'Maybe_Ayden · 同起点发牌教学', url:'https://www.bilibili.com/video/BV1Wi421Y7Ay/'},
+ stars: {title:'wasllll · 配置术语（星星篇）', url:'https://www.bilibili.com/video/BV1WW42197zB/'},
+ sections: {title:'wasllll · 死镰段／水神段／如龙段', url:'https://www.bilibili.com/video/BV1P1421k7GQ/'},
+ offset: {title:'4399guangguang · 错位滑星教学', url:'https://www.bilibili.com/video/BV1ZEyJYqEzo/'},
+};
+
+export const patterns = [
+ {value:'海底谭', group:'滑星复合', caption:'UMIYURI', icon:'weave', aliases:['海底潭（历史写法）'], description:'经典夹键与滑星错位。先保留独立条目，不把所有错位归为海底谭。', sources:['sea','offset']},
+ {value:'纵连', group:'连打与交互', caption:'JACK', icon:'jack', supported:true, description:'同键连续击打；当前规则只识别至少四个连续单 Tap，不含双押纵连。', sources:['guide','terms']},
+ {value:'交互', group:'连打与交互', caption:'TRILL', icon:'trill', supported:true, description:'两个键位轮流出音符；当前规则只识别至少四个连续单 Tap，不能证明实际手序。', sources:['guide','terms']},
+ {value:'快速交互', group:'连打与交互', caption:'FAST TRILL', icon:'trill', aliases:['高速交互'], description:'交互的速度专项。后续同时看间隔、持续与变速，不直接用整曲 BPM 划分。', sources:['fast']},
+ {value:'双押纵连', group:'连打与交互', caption:'DOUBLE JACK', icon:'jack', aliases:['双纵'], description:'成对音符连续重复，与单 Tap 纵连分开研究。', sources:['guide']},
+ {value:'三角交互', group:'连打与交互', caption:'TRIANGLE', icon:'trill', description:'社区术语候选；三键循环的具体边界待谱面样例确认。', sources:['terms']},
+ {value:'轴交互', group:'连打与交互', caption:'ANCHOR TRILL', icon:'trill', description:'带固定轴键的交互变体；保留移动、节奏及手序差异。', sources:['terms']},
+ {value:'轴三角', group:'连打与交互', caption:'ANCHOR TRIANGLE', icon:'trill', description:'与轴交互相邻的社区分类，暂不合并为同一识别器。', sources:['terms']},
+ {value:'楼梯交互', group:'连打与交互', caption:'MOVING TRILL', icon:'trill', aliases:['位移交互（部分语境）'], description:'交互伴随键位移动；和楼梯、散点的重叠叫法保留待核。', sources:['terms']},
+ {value:'散点', group:'位移与节奏', caption:'STREAM', icon:'ring', description:'多键位连续变化的音符序列，不作为普通单点入口。', sources:['terms','guide']},
+ {value:'扫键', group:'位移与节奏', caption:'SWEEP', icon:'ring', description:'相邻键位快速行进，具体速度与折返需另作标注。', sources:['guide']},
+ {value:'转圈', group:'位移与节奏', caption:'ROTATION', icon:'ring', description:'沿圆周连续行进；方向、圈数、速度分别保留。', sources:['guide']},
+ {value:'单双押', group:'位移与节奏', caption:'SINGLE / DOUBLE', icon:'jack', aliases:['单双','切键（部分语境）'], description:'单个与成对音符交替；相邻拍是否重键会改变配置。', sources:['terms','guide']},
+ {value:'连续双押', group:'位移与节奏', caption:'DOUBLE STREAM', icon:'jack', aliases:['双押阵'], description:'连续成对出键，位移与同键重复不能混为一类。', sources:['terms','guide']},
+ {value:'定拍', group:'位移与节奏', caption:'ANCHOR RHYTHM', icon:'jack', description:'固定节奏叠加另一侧变化的练习方向；具体边界待样例确认。', sources:['beat','terms']},
+ {value:'跳拍', group:'位移与节奏', caption:'SWING', icon:'trill', description:'长短间隔交替的节奏专项，保留不同比例与出键组合。', sources:['guide','terms']},
+ {value:'发牌', group:'滑星复合', caption:'DEALING', icon:'multi', description:'同起点滑星组的社区叫法；各轨启动时机和轨迹需分别核对。', sources:['deal','stars']},
+ {value:'一笔画', group:'滑星复合', caption:'CONNECTED SLIDES', icon:'multi', description:'多条滑星在时空上衔接；往复等变体后续单独标注。', sources:['guide','stars']},
+ {value:'错位', group:'滑星复合', caption:'OFFSET', icon:'weave', description:'拍键与滑星启动时机交织的研究方向；不默认等同海底谭。', sources:['offset','stars']},
+ {value:'慢速滑星', group:'滑星复合', caption:'SLOW SLIDES', icon:'multi', description:'关注长等待与慢轨迹的配合，不能仅凭低 BPM 判定。', sources:['stars']},
+ {value:'死镰段', group:'滑星复合', caption:'DEATH SCYTHE', icon:'weave', description:'曲目段落命名的复合配置，先保留社区名称，精确结构待样例确认。', sources:['sections']},
+ {value:'水神段', group:'滑星复合', caption:'SECTION STUDY', icon:'weave', description:'曲目段落命名的复合配置，与死镰段分开整理。', sources:['sections']},
+ {value:'如龙段', group:'滑星复合', caption:'SECTION STUDY', icon:'weave', description:'曲目段落命名的复合配置，手序与变体边界待核。', sources:['sections']},
+];

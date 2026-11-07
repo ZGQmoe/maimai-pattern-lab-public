@@ -1,18 +1,137 @@
 <!doctype html>
-<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>maimai 配置练习检索</title><link rel="stylesheet" href="style.css">
-<main><h1>maimai 配置练习检索</h1><p>功能原型：仅检索导入谱面与原创样例，未连接实际曲目数据库。</p>
-<form id="search"><fieldset><legend>检索条件</legend>
-<label>想练习的配置 <select id="family"><option value="全部">全部已支持配置</option><option value="海底谭">海底谭配置 / Slide–Tap 交织（待研究）</option><option value="交互">交互 / Trill</option><option value="纵连">纵连 / Jack</option><option value="多重 Slide">多重 Slide（待研究）</option><option>基础 Slide</option></select></label>
-<label>目标等级 <select id="filter"><option>全部</option><option>12</option><option>12+</option><option>13</option><option>13+</option><option>14</option></select></label>
-<label>练习策略 <select id="strategy"><option value="all">浏览全部负荷</option><option value="easy">略简单，熟悉配置</option><option value="same">同等级，巩固配置</option><option value="hard">略困难，挑战配置</option></select></label>
-<button>检索片段</button></fieldset></form>
-<p id="status" role="status"></p>
-<h2>练习库</h2><p id="library"></p><button id="demo">加载原创样例</button> <button id="export">导出练习库</button>
-<details><summary>导入谱面</summary><p>仅导入有权使用的谱面。谱面在本机解析，不会上传。导入库可通过文件转移设备。</p>
-<label>选择文件 <input type="file" id="files" multiple accept=".txt,.simai,.json"></label>
-<label>粘贴单谱 Simai <textarea id="source"></textarea></label><label>曲名 <input id="title" value="我的练习谱"></label><label>单谱等级 <select id="level"><option>12</option><option>12+</option><option>13</option><option>13+</option><option>14</option></select></label><button id="add">解析并加入</button></details>
-<p id="import-status" role="status"></p>
-<h2>片段结果</h2><p id="reference"></p><button id="clear" disabled>清除参考片段</button><ol id="results"></ol>
-<h2>参考片段详情</h2><div id="detail"></div>
-<details><summary>支持范围</summary><p>基础纵连、交互和单段 Slide 已支持；复杂 Simai 语法会报错。海底谭/Slide–Tap 交织与多重 Slide 是待研究入口。</p><p>练习策略暂以所选片段为参考。负荷低于 0.9 倍为略简单，0.9–1.1 倍为接近，高于 1.1 倍为略困难；均为未校准估计。整曲等级单独筛选，局部适合不代表整曲适合。</p></details>
-<p><a href="https://github.com/ZGQmoe/maimai-pattern-lab-public">源码、需求与交接</a></p></main><script type="module" src="app.js"></script>
+<html lang="zh-CN">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="description" content="Mailab · maimai 配置练习台。选择 12 及以上等级，浏览经典配置清单，导入 ADX 谱面。">
+ <title>Mailab · maimai 配置练习台</title>
+ <link rel="stylesheet" href="style.css?v=mailab-1">
+ <link rel="icon" href="mailab.svg" type="image/svg+xml">
+</head>
+<body>
+<svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+ <symbol id="mark-ring" viewBox="0 0 40 40">
+  <circle cx="20" cy="20" r="13" fill="none" stroke="currentColor" stroke-width="2"/>
+  <circle cx="20" cy="20" r="5" fill="currentColor"/>
+  <path d="M20 2v7m18 11h-7M20 38v-7M2 20h7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+ </symbol>
+ <symbol id="mark-jack" viewBox="0 0 40 40">
+  <g fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="20" cy="12" r="7"/><circle cx="20" cy="28" r="7"/><circle cx="20" cy="20" r="3" fill="currentColor"/></g>
+ </symbol>
+ <symbol id="mark-trill" viewBox="0 0 40 40">
+  <path d="m11 10 18 10-18 10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 4"/>
+  <g fill="currentColor"><circle cx="11" cy="10" r="5"/><circle cx="29" cy="20" r="5"/><circle cx="11" cy="30" r="5"/></g>
+ </symbol>
+ <symbol id="mark-slide" viewBox="0 0 40 40">
+  <path d="M8 30C10 15 21 8 33 8m-8-4 8 4-5 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="8" cy="31" r="4" fill="currentColor"/>
+ </symbol>
+ <symbol id="mark-weave" viewBox="0 0 40 40">
+  <path d="M6 27c9 0 14-16 28-16M6 13c9 0 14 16 28 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="4 3"/>
+  <circle cx="8" cy="13" r="4" fill="currentColor"/><circle cx="32" cy="29" r="4" fill="currentColor"/>
+ </symbol>
+ <symbol id="mark-multi" viewBox="0 0 40 40">
+  <path d="M7 29C18 26 21 8 33 8M7 29c14 0 16-7 26-7m-6-18 6 4-4 6m-2 4 6 4-4 6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+ </symbol>
+</svg>
+<header class="topbar">
+ <div class="shell topbar-inner">
+  <a class="brand" href="#top"><img src="mailab.svg" width="28" height="28" alt=""><span>MAI<span class="brand-accent">LAB</span></span></a>
+  <nav aria-label="页面导航"><a href="#practice">配置检索</a><a href="#pattern-catalog">配置清单</a><a href="#library-panel">练习库</a><a href="#resources">谱面资源</a></nav>
+  <span class="edition">PATTERN LAB</span>
+ </div>
+</header>
+<main class="shell" id="top">
+ <section class="arcade" id="practice" aria-labelledby="hero-title">
+  <header class="arcade-heading">
+   <div><span class="eyebrow">FREE PLAY / PRACTICE</span><h1 id="hero-title">Mailab</h1></div>
+   <a class="button" id="adx-entry" href="#import-panel">导入 ADX</a>
+  </header>
+  <div class="practice-options">
+   <label for="family-choice">练习配置 <select id="family-choice" aria-describedby="family-state family-description"></select></label>
+   <fieldset><legend>目标等级</legend><div class="level-options" id="level-options"></div></fieldset>
+  </div>
+  <div class="pattern-note"><strong id="family-state"></strong><p id="family-description"></p></div>
+  <div class="cabinet" id="cabinet">
+   <div class="screen">
+    <div class="mode" aria-live="polite"><span id="step-number">01</span><span id="step-title">选择配置</span></div>
+    <p class="ticker" id="screen-hint">左右切换配置 · 选择后按 NEXT</p>
+    <div class="carousel" id="carousel" aria-label="选项卡组">
+     <button class="jacket side" id="previous-card" type="button"></button>
+     <div class="jacket current" id="current-card"></div>
+     <button class="jacket side" id="next-card" type="button"></button>
+    </div>
+    <div class="ring-nav">
+     <button id="previous" type="button" aria-label="上一张卡">◀</button>
+     <span id="position" aria-live="polite"></span>
+     <button id="following" type="button" aria-label="下一张卡">▶</button>
+    </div>
+    <div class="game-actions">
+     <button id="back" type="button" disabled><span>BACK</span><small>返回</small></button>
+     <button id="next" type="button"><span>NEXT</span><small>选等级</small></button>
+    </div>
+   </div>
+  </div>
+  <p class="status screen-status" id="status" role="status"></p>
+  <div class="console-actions">
+   <label for="strategy">OPTION · 练习策略
+    <select id="strategy"><option value="all">浏览全部负荷</option><option value="easy">略简单 · 熟悉配置</option><option value="same">同等级 · 巩固配置</option><option value="hard">略困难 · 挑战配置</option></select>
+   </label>
+   <a href="#library-panel">练习库 / 加载原创样例 ↓</a>
+  </div>
+  <div class="reference" id="reference-panel" hidden>
+   <p id="reference"></p>
+   <div id="detail"></div>
+   <button id="clear" class="button compact" type="button">清除参考片段</button>
+  </div>
+ </section>
+
+ <section class="panel catalog" id="pattern-catalog" aria-labelledby="catalog-title">
+  <header class="panel-heading"><span class="step">02</span><div><span class="eyebrow">PATTERN DIRECTORY</span><h2 id="catalog-title">经典配置清单 <small id="pattern-count"></small></h2></div></header>
+  <p class="status">先按社区叫法建目录。名称可能重叠，难度取决于具体速度、持续和衔接；“待研究”条目尚不能自动检索。点击配置名称可回到练习台选择。</p>
+  <details class="fold"><summary>展开配置与参考教程</summary><div class="pattern-list" id="pattern-list"></div><p>“海胆”等历史叫法尚未找到足以确认独立结构的来源，暂不与海底谭合并。</p></details>
+ </section>
+
+ <section class="panel library" id="library-panel" aria-labelledby="library-title">
+  <header class="panel-heading"><span class="step">03</span><div><span class="eyebrow">LOCAL LIBRARY</span><h2 id="library-title">练习库</h2></div></header>
+  <p id="library" class="library-count"></p>
+  <div class="library-actions">
+   <button id="demo" class="button primary" type="button" disabled>＋ 加载原创样例</button>
+   <button id="export" class="button" type="button" disabled>导出练习库</button>
+   <button id="reset-library" class="button" type="button" disabled>清空本机练习库</button>
+  </div>
+  <p id="storage-status" class="status" role="status">正在恢复本机练习库…</p>
+  <p id="import-status" class="status" role="status"></p>
+  <details class="fold" id="import-panel">
+   <summary>导入谱面 <span>ADX / ZIP / MAIDATA / JSON</span></summary>
+   <p>优先选 AstroDX 的 .adx 或 .zip 谱面包。浏览器只读取包内的 maidata.txt，忽略音频、封面和视频。也可以直接导入谱面文本。</p>
+   <label for="files">选择文件 <input type="file" id="files" disabled multiple accept=".adx,.zip,.txt,.simai,.json"></label>
+   <label for="source">粘贴单谱 Simai <textarea id="source" rows="3" spellcheck="false"></textarea></label>
+   <div class="import-fields">
+    <label for="title">曲名 <input id="title" value="我的练习谱"></label>
+    <label for="level">单谱等级 <select id="level"></select></label>
+    <button id="add" class="button" type="button" disabled>解析并加入</button>
+   </div>
+  </details>
+ </section>
+
+ <section class="panel resources" id="resources" aria-labelledby="resources-title">
+  <header class="panel-heading"><span class="step">04</span><div><span class="eyebrow">CHART SOURCES</span><h2 id="resources-title">谱面资源</h2></div></header>
+  <div class="resource-grid">
+   <article><span class="resource-type blue">AstroDX · .adx 下载目录</span><h3>ADX 谱面资源</h3><p>可找 AstroDX 谱面包。站点代码和目录另有许可，谱面与音视频需核对原作者的授权。</p><a target="_blank" rel="noopener noreferrer" href="https://adxdls.saop.cc/">浏览 ADX 目录 ↗</a><a target="_blank" rel="noopener noreferrer" href="https://wiki.astrodx.com/cn/install/android">AstroDX 格式指南 ↗</a></article>
+   <article><span class="resource-type mint">原创谱面 · MIT</span><h3>chika3742 / majdata-charts</h3><p>作者在仓库声明原创谱面采用 MIT 许可。仓库提供谱面文本，音源单独处理。</p><a target="_blank" rel="noopener noreferrer" href="https://github.com/chika3742/majdata-charts">浏览原创谱面 ↗</a><a target="_blank" rel="noopener noreferrer" href="https://github.com/chika3742/majdata-charts/blob/main/LICENSE.md">查看许可 ↗</a></article>
+   <article><span class="resource-type blue">社区作品 · 逐谱核对</span><h3>Majdata Net</h3><p>浏览社区自制谱面。站点前端代码采用 GPL-3.0，谱面和音源的使用条件需逐个核对。</p><a target="_blank" rel="noopener noreferrer" href="https://majdata.net/">打开社区 ↗</a><a target="_blank" rel="noopener noreferrer" href="https://github.com/TeamMajdata/MajdataNet">前端源码 ↗</a></article>
+   <article><span class="resource-type violet">查谱参考 · 外部目录</span><h3>maimai.party</h3><p>可浏览曲目与配置。站点的 MIT 许可适用于项目代码，第三方谱面和游戏素材有各自的使用条件。</p><a target="_blank" rel="noopener noreferrer" href="https://maimai.party/">打开曲目目录 ↗</a></article>
+  </div>
+ </section>
+
+ <details class="fold help">
+  <summary>规则与练习策略</summary>
+  <p>专项检索支持连续单 Tap 纵连和两键交互。普通单点和基础 Slide 不作为专项选择。清单内其他配置均待研究，部分 Simai 语法也超出当前解析范围。</p>
+  <p>选择参考片段后，练习策略按局部模型负荷比较。低于 0.9 倍为略简单，0.9–1.1 倍为接近，高于 1.1 倍为略困难。整曲等级单独筛选。</p>
+ </details>
+ <footer><span>Mailab · PATTERN LAB</span><a target="_blank" rel="noopener noreferrer" href="https://github.com/ZGQmoe/maimai-pattern-lab-public">源码、需求与交接 ↗</a></footer>
+</main>
+<script type="module" src="app.js?v=mailab-1"></script>
+</body>
+</html>
