@@ -1,4 +1,6 @@
-import {readCharts,parse,analyze,demos,levels,searchSegments,isPracticeSegment} from './core.js?v=mailab-1';
+import {readCharts,parse,analyze,demos,levels,searchSegments,isPracticeSegment,previewWindow,coverage,sortNames} from './core.js?v=mailab-2';
+import {sampleTexts} from './samples.js';
+import {createPreview} from './preview.js?v=mailab-2';
 import {patterns,patternSources} from './patterns.js';
 import {chartData,loadCharts,saveCharts,clearCharts} from './library.js';
 
@@ -19,16 +21,33 @@ const levelChoices = ['全部', ...levels].map(value => ({
  title:value === '全部' ? '12 及以上' : value, value, caption:value === '全部' ? 'ALL LEVELS' : 'LEVEL', tone:'level',
 }));
 const chartTypes = ['EASY','BASIC','ADVANCED','EXPERT','MASTER','Re:MASTER','UTAGE'];
-const charts = [], segments = [];
+const charts = [], segments = [], failures = [];
 const chartKeys = new Set();
 const pendingCharts = new Map();
 let stage = 0, familyIndex = 0, levelIndex = 1, trackIndex = 0, reference = null;
 let cardCount = 0, currentTrack = null;
 let libraryBusy = true;
+let resultLimit = 30, previewing = null;
+const PAGE = 30;
+const typeName = chart => chartTypes[Number(/^inote_([1-7])$/.exec(chart.difficulty)?.[1]) - 1] ?? chart.difficulty;
+const preview = createPreview({canvas:$('preview-canvas'), scrub:$('preview-scrub'), playButton:$('preview-play'),
+ speed:$('preview-speed'), clock:$('preview-clock'), phase:$('preview-phase')});
+for (const [value,title] of Object.entries(sortNames)) {
+ const option = node('option',title);
+ option.value = value;
+ $('f-sort').append(option);
+}
+$('f-sort').value = 'title';
+function filters() {
+ const number = id => Number($(id).value) || 0;
+ return {minRate:number('f-rate'), maxRate:number('f-max-rate'), minCount:number('f-count'), rhythm:$('f-rhythm').value,
+  spreads:[...$('f-spread').querySelectorAll('input:checked')].map(input => Number(input.value))};
+}
 
 function selectFamily(value) {
  familyIndex = families.findIndex(family => family.value === value);
  stage = 0;
+ resultLimit = PAGE;
  trackIndex = 0;
  render();
 }
@@ -78,6 +97,7 @@ for (const choice of levelChoices) {
  button.onclick = () => {
   levelIndex = levelChoices.indexOf(choice);
   stage = 1;
+  resultLimit = PAGE;
   trackIndex = 0;
   render();
  };
@@ -108,7 +128,10 @@ function ingest(items, errors = []) {
    records.push(chartData(parsed));
    added++;
   } catch (error) {
-   errors.push((chart?.title ?? '未知曲目') + '：' + error.message);
+   const label = (chart?.title ?? '未知曲目') + (chart?.difficulty ? ' / ' + typeName(chart) : '');
+   errors.push(label + '：' + error.message);
+   const failure = {title:String(chart?.title ?? '未知曲目'), difficulty:chart?.difficulty, level:typeof chart?.level === 'string' ? chart.level : '未知', reason:error.message};
+   if (!failures.some(item => item.title === failure.title && item.difficulty === failure.difficulty && item.reason === failure.reason)) failures.push(failure);
   }
  }
  return {added, errors, records};
@@ -145,13 +168,16 @@ function render() {
  for (const button of $('level-options').children) button.setAttribute('aria-pressed',String(button.dataset.level === level));
  $('family-description').textContent = family.description;
  $('family-state').textContent = family.value === '全部' ? '专项目录' : family.supported ? '基础规则可检索' : '待研究 · 暂无自动识别';
+ const currentResult = searchSegments(segments,{family:family.value,level,strategy:$('strategy').value,reference,filters:filters(),sort:$('f-sort').value});
+ renderResults(family,level,levelTitle,currentResult);
+ renderCoverage();
  let cards = families, index = familyIndex;
  let summary = '', current = null;
  if (stage === 1) {
   cards = levelChoices;
   index = levelIndex;
  } else if (stage === 2) {
-  const result = searchSegments(segments,{family:family.value,level,strategy:$('strategy').value,reference});
+  const result = currentResult;
   cards = result.items.map(item => {
    const segment = item.segment;
    const type = Number(/^inote_([1-7])$/.exec(segment.chart.difficulty)?.[1]);
@@ -161,7 +187,7 @@ function render() {
   trackIndex = Math.min(trackIndex, Math.max(0,cards.length - 1));
   index = trackIndex;
   current = cards[index];
-  summary = cards.length ? cards.length + ' 段 · 按局部模型负荷排序' : '没有匹配片段。';
+  summary = cards.length ? cards.length + ' 段 · ' + sortNames[$('f-sort').value] : '没有匹配片段。';
   if (!cards.length && !charts.length) summary = '练习库为空。请加载原创样例或导入谱面。';
   else if (!cards.length && level !== '全部' && !charts.some(chart => chart.level === level)) summary = '练习库里还没有 ' + level + ' 级谱面。';
   if (result.message) summary = result.message + ' ' + summary;
@@ -189,6 +215,11 @@ function render() {
  if (current) {
   const segment = current.segment;
   $('detail').append(node('p',segment.chart.title + ' · ' + segment.family + ' · ' + time(segment.start) + '–' + time(segment.end) + ' · 模型负荷 ' + segment.load.toFixed(1)));
+  const preview = node('button','PREVIEW 定位预览');
+  preview.type = 'button';
+  preview.className = 'button compact';
+  preview.onclick = () => openPreview(segment);
+  $('detail').append(preview);
   if (current.sim !== null) $('detail').append(node('p','结构相似度 ' + Math.round(current.sim * 100) + '% · 参考负荷的 ' + current.ratio.toFixed(2) + ' 倍'));
  }
  const details = reference ?? current?.segment;
@@ -199,6 +230,124 @@ function render() {
  cardCount = cards.length;
  currentTrack = current;
 }
+
+function emptyMessage(family,level,levelTitle,result) {
+ if (!charts.length && !failures.length) return '练习库为空。请加载原创样例或导入谱面。';
+ if (family.value !== '全部' && !family.supported) return family.value + ' 的识别器待研究：不生成命中，也不能据此判断谱面里没有该配置。';
+ const atLevel = chart => level === '全部' ? Number.parseFloat(chart.level) >= 12 : chart.level === level;
+ const failed = failures.filter(atLevel).length;
+ const unknown = failed ? ' 另有 ' + failed + ' 张' + levelTitle + '谱面解析失败，是否含该配置未知。' : '';
+ if (!charts.some(atLevel)) return (failed ? '' : '练习库里还没有 ' + levelTitle + ' 的谱面。') + unknown;
+ if (result.filtered) return '有 ' + result.filtered + ' 段被局部条件排除，可放宽条件。' + unknown;
+ return '已解析的 ' + levelTitle + ' 谱面中没有找到' + (family.value === '全部' ? '已支持的专项' : family.value) + '片段（仅限当前规则）。' + unknown;
+}
+function describe(segment) {
+ const f = segment.features;
+ const bar = Math.floor(segment.notes[0].beat / 4) + 1;
+ return [f.count + ' 个 Note', '平均 ' + f.rate.toFixed(1) + ' 个/秒', '最短间隔 ' + Math.round(f.minGap * 1000) + ' ms',
+  f.noteValue ? '约 ' + f.noteValue + ' 分音' : '', f.even ? '等间隔' : '不等间隔', 'BPM ' + f.bpms.join('→'),
+  '片段内其他 Note ' + segment.interference, '约第 ' + bar + ' 小节'].filter(Boolean).join(' · ');
+}
+function renderResults(family,level,levelTitle,result) {
+ const list = $('result-list');
+ list.replaceChildren();
+ const total = result.items.length;
+ const songs = new Set(result.items.map(item => item.segment.chart.title)).size;
+ let summary = total ? total + ' 段命中 · 来自 ' + songs + ' 首曲目 · ' + family.title + ' · ' + levelTitle : emptyMessage(family,level,levelTitle,result);
+ if (total && result.filtered) summary += ' · 局部条件排除 ' + result.filtered + ' 段';
+ if (result.message) summary = result.message + ' ' + summary;
+ $('results-summary').textContent = summary;
+ for (const item of result.items.slice(0,resultLimit)) {
+  const segment = item.segment, f = segment.features;
+  const row = node('li','');
+  row.className = 'result';
+  row.dataset.id = segment.id;
+  if (previewing === segment) row.setAttribute('aria-current','true');
+  const head = node('p','');
+  head.className = 'result-head';
+  head.append(node('strong',segment.chart.title), node('span',typeName(segment.chart)), node('span','Lv ' + segment.chart.level));
+  const what = node('p',segment.family + (f.spreadName && segment.family === '交互' ? ' · ' + f.spreadName : '') + ' · ' + segment.start.toFixed(2) + '–' + segment.end.toFixed(2) + ' 秒');
+  what.className = 'result-what';
+  const why = node('p','依据：' + f.evidence);
+  const stats = node('p',describe(segment));
+  stats.className = 'result-stats';
+  const actions = node('div','');
+  actions.className = 'result-actions';
+  const open = node('button','Preview');
+  open.type = 'button';
+  open.className = 'button primary compact';
+  open.setAttribute('aria-label','预览 ' + segment.chart.title + ' ' + typeName(segment.chart) + ' ' + segment.family + ' ' + segment.start.toFixed(2) + ' 秒');
+  open.onclick = () => openPreview(segment);
+  const pick = node('button',reference === segment ? '当前参考' : '设为参考');
+  pick.type = 'button';
+  pick.className = 'button compact';
+  pick.disabled = reference === segment;
+  pick.onclick = () => { reference = segment; trackIndex = 0; render(); };
+  actions.append(open,pick);
+  if (item.sim !== null) actions.append(node('small','相似度 ' + Math.round(item.sim * 100) + '% · 参考负荷 ' + item.ratio.toFixed(2) + ' 倍'));
+  row.append(head,what,why,stats,actions);
+  list.append(row);
+ }
+ $('more-results').hidden = total <= resultLimit;
+ $('more-results').textContent = '显示更多（还有 ' + Math.max(0,total - resultLimit) + ' 段）';
+ $('f-spread').disabled = !['交互','全部'].includes(family.value);
+}
+function openPreview(segment) {
+ previewing = segment;
+ const view = previewWindow(segment);
+ $('preview-panel').hidden = false;
+ $('preview-meta').textContent = segment.chart.title + ' · ' + typeName(segment.chart) + ' · Lv ' + segment.chart.level + ' · ' + segment.family;
+ $('preview-range').textContent = segment.start.toFixed(2) + '–' + segment.end.toFixed(2) + ' 秒；播放 ' + Math.max(0,view.playStart).toFixed(2) + '–' + view.playEnd.toFixed(2) + ' 秒';
+ const approx = view.notes.some(({note}) => note.kind === 'slide' && note.shape !== '-');
+ $('preview-note').textContent = (view.crossing ? '含 ' + view.crossing + ' 个跨越目标边界的 Hold/Slide，已扩展播放范围。' : '') +
+  (approx ? '弧形 / 折线类 Slide 轨迹为近似绘制。' : '') + '无音频。';
+ const roles = {target:'目标', crossing:'跨边界', inside:'片段内其他', context:'前后文'};
+ $('preview-notes').textContent = view.notes.map(({note,role}) => note.t.toFixed(3) + ' 秒  ' + note.raw.padEnd(10) + ' ' + roles[role]).join('\n');
+ for (const row of $('result-list').children) row.toggleAttribute('aria-current', row.dataset.id === segment.id);
+ preview.show(view);
+ $('preview-panel').scrollIntoView({block:'nearest', behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+ $('preview-panel').focus({preventScroll:true});
+}
+function renderCoverage() {
+ const report = coverage(charts,segments,failures);
+ $('coverage-brief').textContent = report.scanned ? '扫描 ' + report.scanned + ' 张 · 解析 ' + report.parsed + ' · 失败 ' + report.failed : '';
+ const box = $('coverage');
+ box.replaceChildren();
+ if (!report.scanned) { box.append(node('p','尚未扫描谱面。')); return; }
+ box.append(node('p','本机库 ' + report.parsed + ' 张难度谱（' + report.songs + ' 首曲目）已解析；本次会话另有 ' + report.failed + ' 张解析失败（失败谱面不保存，刷新后不再列出）。'));
+ const table = node('table','');
+ const headRow = node('tr','');
+ for (const title of ['整谱等级','已解析','解析失败',...report.supported]) headRow.append(node('th',title));
+ const thead = node('thead',''); thead.append(headRow);
+ const tbody = node('tbody','');
+ for (const row of report.levels) {
+  const tr = node('tr','');
+  for (const value of [row.level,row.parsed,row.failed,...report.supported.map(family => row.hits[family] ?? 0)]) tr.append(node('td',String(value)));
+  tbody.append(tr);
+ }
+ table.append(thead,tbody);
+ const wrap = node('div',''); wrap.className = 'table-wrap'; wrap.append(table);
+ box.append(wrap, node('p','命中只计 12 及以上。识别支持：' + report.supported.join('、') + '（基础规则）。其余 ' + report.unsupported.length + ' 项尚无识别器，结果为空不代表没有该配置。'));
+ for (const [reason,items] of Object.entries(report.reasons)) {
+  box.append(node('p','失败原因 · ' + reason + '：' + items.map(item => item.title + (item.difficulty ? ' / ' + typeName(item) : '') + '（' + item.level + '）').join('、')));
+ }
+}
+$('more-results').onclick = () => { resultLimit += PAGE; render(); };
+for (const id of ['f-rate','f-max-rate','f-count','f-rhythm','f-sort']) $(id).onchange = () => { resultLimit = PAGE; trackIndex = 0; render(); };
+$('f-spread').onchange = () => { resultLimit = PAGE; trackIndex = 0; render(); };
+$('f-reset').onclick = () => {
+ for (const id of ['f-rate','f-max-rate','f-count','f-rhythm']) $(id).value = '';
+ for (const input of $('f-spread').querySelectorAll('input')) input.checked = false;
+ resultLimit = PAGE; render();
+};
+$('preview-replay').onclick = () => preview.replay();
+$('preview-back').onclick = () => preview.step(-.05);
+$('preview-forward').onclick = () => preview.step(.05);
+$('preview-panel').onkeydown = event => {
+ if (event.target.closest('select, input')) return;
+ if (event.key === ' ' || event.key === 'k') { event.preventDefault(); preview.toggle(); }
+ else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); preview.step(event.key === 'ArrowLeft' ? -.05 : .05); }
+};
 
 function move(direction) {
  const length = cardCount;
@@ -275,7 +424,9 @@ async function libraryAction(action) {
 }
 
 $('demo').onclick = () => libraryAction(async () => {
- const result = await storeCharts(demos);
+ const errors = [];
+ const items = [...demos, ...sampleTexts.flatMap(text => readCharts(text))];
+ const result = await storeCharts(items,errors);
  if (!result.added && !result.errors.length) {
   $('import-status').textContent = '原创样例已加入。';
  } else {
@@ -298,6 +449,7 @@ $('files').onchange = event => {
      if (/\.(?:adx|zip)$/i.test(file.name)) {
       const {readAdx} = await import('./adx.js');
       const pack = await readAdx(file);
+      for (const message of pack.errors) failures.push({title:file.name + ' · ' + message.split('：')[0], level:'未知', reason:message});
       result = await storeCharts(pack.charts,pack.errors);
      } else {
       if (file.size > 500000) throw Error('谱面文本超过 500 KB');
@@ -324,8 +476,12 @@ $('reset-library').onclick = () => {
   segments.length = 0;
   chartKeys.clear();
   pendingCharts.clear();
+  failures.length = 0;
   reference = null;
   currentTrack = null;
+  previewing = null;
+  preview.stop();
+  $('preview-panel').hidden = true;
   trackIndex = 0;
   $('storage-status').textContent = '本机练习库已清空。';
   $('import-status').textContent = '';
