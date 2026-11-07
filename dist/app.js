@@ -1,4 +1,5 @@
-import {readCharts,parse,analyze,demos,levels,searchSegments} from './core.js';
+import {readCharts,parse,analyze,demos,levels,searchSegments,isPracticeSegment} from './core.js?v=mailab-1';
+import {patterns,patternSources} from './patterns.js';
 import {chartData,loadCharts,saveCharts,clearCharts} from './library.js';
 
 const $ = id => document.getElementById(id);
@@ -9,23 +10,80 @@ const node = (tag,text) => {
 };
 const time = seconds => seconds.toFixed(2) + ' 秒';
 const families = [
- {title:'全部配置', value:'全部', caption:'ALL PATTERNS', icon:'ring', tone:'all'},
- {title:'纵连', value:'纵连', caption:'JACK', icon:'jack', tone:'jack'},
- {title:'交互', value:'交互', caption:'TRILL', icon:'trill', tone:'trill'},
- {title:'基础 Slide', value:'基础 Slide', caption:'SINGLE SLIDE', icon:'slide', tone:'slide'},
- {title:'海底谭', value:'海底谭', caption:'待研究 · SLIDE–TAP', icon:'weave', tone:'planned'},
- {title:'多重 Slide', value:'多重 Slide', caption:'待研究 · MULTI', icon:'multi', tone:'planned'},
+ {title:'全部专项', value:'全部', caption:'ALL PATTERNS', icon:'ring', tone:'all', description:'浏览 12 及以上的已支持专项片段。纵连、交互已有基础规则，其他条目先整理清单。'},
+ ...patterns.map(pattern => ({...pattern, title:pattern.value,
+  caption:(pattern.supported ? '' : '待研究 · ') + pattern.caption,
+  tone:pattern.supported ? (pattern.value === '纵连' ? 'jack' : 'trill') : 'planned'})),
 ];
 const levelChoices = ['全部', ...levels].map(value => ({
- title:value, value, caption:value === '全部' ? 'ALL LEVELS' : 'LEVEL', tone:'level',
+ title:value === '全部' ? '12 及以上' : value, value, caption:value === '全部' ? 'ALL LEVELS' : 'LEVEL', tone:'level',
 }));
 const chartTypes = ['EASY','BASIC','ADVANCED','EXPERT','MASTER','Re:MASTER','UTAGE'];
 const charts = [], segments = [];
 const chartKeys = new Set();
 const pendingCharts = new Map();
-let stage = 0, familyIndex = 0, levelIndex = 0, trackIndex = 0, reference = null;
+let stage = 0, familyIndex = 0, levelIndex = 1, trackIndex = 0, reference = null;
 let cardCount = 0, currentTrack = null;
 let libraryBusy = true;
+
+function selectFamily(value) {
+ familyIndex = families.findIndex(family => family.value === value);
+ stage = 0;
+ trackIndex = 0;
+ render();
+}
+
+const allOption = node('option','全部专项');
+allOption.value = '全部';
+$('family-choice').append(allOption);
+for (const group of new Set(patterns.map(pattern => pattern.group))) {
+ const options = node('optgroup','');
+ options.label = group;
+ const section = node('section','');
+ section.append(node('h3',group));
+ const list = node('ul','');
+ for (const pattern of patterns.filter(pattern => pattern.group === group)) {
+  const state = pattern.supported ? '基础规则' : '待研究';
+  const option = node('option',pattern.value + ' · ' + state);
+  option.value = pattern.value;
+  options.append(option);
+  const item = node('li','');
+  const select = node('button',pattern.value);
+  select.type = 'button';
+  select.setAttribute('aria-label','选择配置 ' + pattern.value);
+  select.onclick = () => {selectFamily(pattern.value); $('family-choice').focus();};
+  item.append(select,node('span',state),node('p',pattern.description));
+  if (pattern.aliases) item.append(node('small','相关叫法：' + pattern.aliases.join('、')));
+  for (const key of pattern.sources) {
+   const source = patternSources[key];
+   const link = node('a',source.title + ' ↗');
+   link.href = source.url;
+   link.target = '_blank';
+   link.rel = 'noopener noreferrer';
+   item.append(link);
+  }
+  list.append(item);
+ }
+ $('family-choice').append(options);
+ section.append(list);
+ $('pattern-list').append(section);
+}
+$('pattern-count').textContent = patterns.length + ' 项';
+$('family-choice').onchange = event => selectFamily(event.target.value);
+for (const choice of levelChoices) {
+ const button = node('button',choice.title);
+ button.type = 'button';
+ button.dataset.level = choice.value;
+ button.setAttribute('aria-label',choice.value === '全部' ? '选择全部 12 及以上等级' : '选择等级 ' + choice.value);
+ button.onclick = () => {
+  levelIndex = levelChoices.indexOf(choice);
+  stage = 1;
+  trackIndex = 0;
+  render();
+ };
+ $('level-options').append(button);
+ if (choice.value !== '全部') $('level').append(node('option',choice.value));
+}
 
 function ingest(items, errors = []) {
  if (!Array.isArray(items) || items.length > 100) throw Error('单次导入最多 100 张难度谱面');
@@ -77,11 +135,16 @@ function jacket(element, card) {
 }
 
 function render() {
- $('library').textContent = charts.length + ' 张谱面 · ' + segments.length + ' 个片段。原创样例的等级仅用于演示。';
+ $('library').textContent = charts.length + ' 张谱面 · ' + segments.filter(isPracticeSegment).length + ' 个专项片段（12 及以上）。原创样例等级仅用于演示。';
  $('export').disabled = libraryBusy || !charts.length;
  $('reset-library').disabled = libraryBusy || !charts.length;
  const family = families[familyIndex];
  const level = levelChoices[levelIndex].value;
+ const levelTitle = levelChoices[levelIndex].title;
+ $('family-choice').value = family.value;
+ for (const button of $('level-options').children) button.setAttribute('aria-pressed',String(button.dataset.level === level));
+ $('family-description').textContent = family.description;
+ $('family-state').textContent = family.value === '全部' ? '专项目录' : family.supported ? '基础规则可检索' : '待研究 · 暂无自动识别';
  let cards = families, index = familyIndex;
  let summary = '', current = null;
  if (stage === 1) {
@@ -106,7 +169,7 @@ function render() {
 
  $('step-number').textContent = '0' + (stage + 1);
  $('step-title').textContent = ['选择配置','选择等级','选择片段'][stage];
- $('screen-hint').textContent = ['左右切换配置 · 按 NEXT 确认',family.title + ' · 选择目标等级',family.title + ' · ' + level + ' · 选择练习片段'][stage];
+ $('screen-hint').textContent = ['左右切换配置 · 按 NEXT 确认',family.title + ' · 选择目标等级',family.title + ' · ' + levelTitle + ' · 选择练习片段'][stage];
  $('status').textContent = summary;
  $('back').disabled = stage === 0;
  $('next').disabled = stage === 2 && !current;
@@ -116,7 +179,7 @@ function render() {
  $('position').textContent = cards.length ? (index + 1) + ' / ' + cards.length : '0 / 0';
  const neighbor = direction => cards.length > 1 ? cards[(index + direction + cards.length) % cards.length] : null;
  jacket($('previous-card'),neighbor(-1));
- jacket($('current-card'),cards[index] ?? {title:'暂无片段',caption:'NO MATCH',icon:'ring',tone:'all'});
+ jacket($('current-card'),cards[index] ?? {title:family.value !== '全部' && !family.supported ? '待研究' : '暂无片段',caption:family.caption,icon:family.icon,tone:family.tone});
  jacket($('next-card'),cards.length === 2 ? null : neighbor(1));
 
  $('reference-panel').hidden = !current && !reference;
@@ -273,7 +336,7 @@ $('export').onclick = () => {
  const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
  const link = node('a','');
  link.href = url;
- link.download = 'maikiri-library.json';
+ link.download = 'mailab-library.json';
  link.click();
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 };

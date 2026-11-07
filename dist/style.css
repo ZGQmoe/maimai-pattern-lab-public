@@ -19,7 +19,8 @@ button, input, select, textarea { font: inherit; }
 button, select, summary { cursor: pointer; }
 button:disabled { cursor: default; opacity: .6; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-[hidden], .status:empty { display: none; }
+[hidden] { display: none !important; }
+.status:empty { display: none; }
 .symbols { position: absolute; width: 0; height: 0; }
 .shell { width: min(100% - 2.5rem, 72rem); margin-inline: auto; }
 .topbar { background: #fff; border-bottom: 1px solid #d7dff3; }
@@ -110,6 +111,24 @@ footer { display: flex; gap: .35rem 1rem; flex-wrap: wrap; justify-content: spac
 .arcade-heading .eyebrow { color: #164e81; font-style: italic; }
 h1 { margin: .12rem 0; color: #142d68; font-weight: 950; font-size: clamp(1.26rem, 3vw, 2rem); line-height: 1.15; }
 .arcade-heading a { text-decoration: none; white-space: nowrap; }
+.practice-options { display: grid; grid-template-columns: minmax(11rem, .75fr) 2fr; align-items: start; gap: .8rem; margin-top: .9rem; }
+.practice-options label, .practice-options legend { font-size: .82rem; font-weight: 850; }
+.practice-options fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
+.level-options { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .24rem; }
+.level-options button { min-width: 2.65rem; min-height: 2.7rem; padding: .3rem .55rem; border: 2px solid #6c67b1; border-radius: .5rem; background: #fff; color: #352671; font-weight: 850; }
+.level-options button[aria-pressed="true"] { color: #fff; background: #5631a5; border-color: #fff; box-shadow: 0 0 0 2px #5631a5; }
+.pattern-note { margin: .85rem 0 .5rem; padding: .6rem .8rem; color: #18376c; background: #ffffffc9; border-radius: .7rem; font-size: .82rem; }
+.pattern-note p { margin: .2rem 0 0; }
+.catalog { margin-top: 1rem; }
+#catalog-title small { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.pattern-list { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; }
+.pattern-list section { min-width: 0; }
+.pattern-list ul { padding: 0; list-style: none; }
+.pattern-list li { padding: .75rem 0; border-top: 1px solid var(--line); }
+.pattern-list button { border: 0; padding: .25rem 0; color: #3d2d9a; background: transparent; font-weight: 850; text-decoration: underline; text-underline-offset: .2em; }
+.pattern-list li > span { margin-left: .5rem; color: var(--muted); font-size: .72rem; }
+.pattern-list small, .pattern-list a { display: block; font-size: .76rem; }
+.pattern-list a { margin-top: .3rem; }
 .cabinet {
  container-type: inline-size;
  position: relative;
@@ -275,6 +294,7 @@ h1 { margin: .12rem 0; color: #142d68; font-weight: 950; font-size: clamp(1.26re
  .arcade { margin-inline: -.35rem; }
  .cabinet { margin-top: .55rem; }
  .resource-grid { grid-template-columns: 1fr; }
+ .practice-options, .pattern-list { grid-template-columns: 1fr; }
 }
 
 .brand-accent { margin: 0; }

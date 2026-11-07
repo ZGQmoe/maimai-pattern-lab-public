@@ -4,6 +4,7 @@ export function chartData({title,level,body,offset = 0,difficulty}) {
 
 async function accessLibrary(mode, action) {
  const database = await new Promise((resolve,reject) => {
+  // Keep the original database name so the Mailab rename preserves existing libraries.
   const request = indexedDB.open('maikiri-library',1);
   request.onupgradeneeded = () => request.result.createObjectStore('charts');
   request.onerror = () => reject(request.error);

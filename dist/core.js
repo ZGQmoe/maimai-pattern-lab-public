@@ -1,4 +1,7 @@
-export const levels=['12','12+','13','13+','14'];
+import {patterns} from './patterns.js';
+export const levels=['12','12+','13','13+','14','14+','15'];
+const supportedFamilies=new Set(patterns.filter(p=>p.supported).map(p=>p.value));
+export const isPracticeSegment=segment=>supportedFamilies.has(segment.family)&&Number.parseFloat(segment.chart.level)>=12;
 const mod=n=>(n%8+8)%8;
 export function readCharts(text,name='导入谱面',level='12'){
  if(text.length>500000)throw Error('文件超过 500 KB，请分批导入');
@@ -85,10 +88,11 @@ export function similarity(a,b){
  return .4+.6*same/Math.max(x.length,y.length);
 }
 export function searchSegments(segments,{family,level,strategy,reference=null}){
- if(['海底谭','多重 Slide'].includes(family))return {items:[],message:'该配置识别器待研究，尚无识别结果。'};
+ if(family!=='全部'&&!supportedFamilies.has(family))return {items:[],message:'该配置识别器待研究，尚无识别结果。'};
  if(reference&&family!=='全部'&&reference.family!==family)return {items:[],message:'参考片段属于另一配置。请清除参考片段后再选。'};
  const items=[];
  for(const segment of segments){
+  if(!isPracticeSegment(segment))continue;
   if((family!=='全部'&&segment.family!==family)||(level!=='全部'&&segment.chart.level!==level))continue;
   if(reference===segment)continue;
   const sim=reference?similarity(reference,segment):null;

@@ -1,5 +1,6 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {parse,readCharts,analyze,signature,demos,searchSegments} from './dist/core.js';
+import {parse,readCharts,analyze,signature,demos,levels,searchSegments} from './dist/core.js';
+import {patterns,patternSources} from './dist/patterns.js';
 const p=body=>parse({title:'test',level:'12',body});
 test('tempo, subdivision, offset, multiple difficulties',()=>{const cs=readCharts('&title=X\n&first=0.5\n&lv_5=12+\n&inote_5=(120){4}1,(240)2,3,E\n&lv_6=13\n&inote_6=(120)1,E');assert.equal(cs.length,2);const ns=parse(cs[0]).notes;assert.deepEqual(ns.map(n=>n.t),[.5,1,1.25]);assert.equal(cs[0].level,'12+');});
 test('hold, slide, touch and simultaneous',()=>{const ns=p('(120){4}1h[4:2]/B2,2-6[4:1],E').notes;assert.equal(ns.length,3);assert.equal(ns[0].duration,1);assert.equal(ns[2].wait,.5);assert.equal(ns[2].duration,.5);assert.equal(ns[1].kind,'touch');});
@@ -40,6 +41,30 @@ test('practice strategy uses reference load, and unsupported choices stay empty'
  assert.deepEqual(searchSegments(list,{...options,reference:list[1]}).items.map(x=>x.segment),[list[0]]);
  assert.equal(searchSegments(list,{...options,level:'14'}).items.length,0);
  assert.match(searchSegments(list,{...options,family:'海底谭'}).message,/待研究/);
+});
+
+test('all 12-and-above levels search independently, and basic notes stay out of practice',()=>{
+ assert.deepEqual(levels,['12','12+','13','13+','14','14+','15']);
+ const list=['11+',...levels].flatMap(level=>analyze(parse({title:level,level,body:'(120){16}1,1,1,1,,,,2-6[4:1],E'})));
+ const search=level=>searchSegments(list,{family:'全部',level,strategy:'all'}).items.map(item=>item.segment);
+ assert.deepEqual(search('全部').map(segment=>segment.chart.level),levels);
+ for(const level of levels) assert.deepEqual(search(level).map(segment=>[segment.family,segment.chart.level]),[['纵连',level]]);
+ assert.equal(searchSegments(list,{family:'基础 Slide',level:'全部',strategy:'all'}).items.length,0);
+ for(const pattern of patterns.filter(pattern=>!pattern.supported)) {
+  const result=searchSegments(list,{family:pattern.value,level:'14+',strategy:'all'});
+  assert.equal(result.items.length,0,pattern.value);
+  assert.match(result.message,/待研究/);
+ }
+});
+
+test('community directory retains sources without treating basic notes as specialties',()=>{
+ assert.equal(new Set(patterns.map(pattern=>pattern.value)).size,patterns.length);
+ for(const title of ['海底谭','纵连','交互','快速交互','定拍','发牌']) assert.ok(patterns.some(pattern=>pattern.value===title));
+ assert.ok(!patterns.some(pattern=>['单点','基础 Slide'].includes(pattern.value)));
+ for(const pattern of patterns) {
+  assert.ok(pattern.sources.length,pattern.value);
+  for(const source of pattern.sources) assert.ok(patternSources[source]?.url.startsWith('https://'));
+ }
 });
 
 test('compact EACH preserves timing, slot boundaries and single-tap detection', () => {

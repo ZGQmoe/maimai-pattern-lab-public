@@ -3,10 +3,10 @@
 <head>
  <meta charset="utf-8">
  <meta name="viewport" content="width=device-width, initial-scale=1">
- <meta name="description" content="Maikiri · maimai 配置练习台。按配置和等级选择练习片段，导入 ADX 谱面。">
- <title>Maikiri · maimai 配置练习台</title>
- <link rel="stylesheet" href="style.css">
- <link rel="icon" href="maikiri.svg" type="image/svg+xml">
+ <meta name="description" content="Mailab · maimai 配置练习台。选择 12 及以上等级，浏览经典配置清单，导入 ADX 谱面。">
+ <title>Mailab · maimai 配置练习台</title>
+ <link rel="stylesheet" href="style.css?v=mailab-1">
+ <link rel="icon" href="mailab.svg" type="image/svg+xml">
 </head>
 <body>
 <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -36,17 +36,22 @@
 </svg>
 <header class="topbar">
  <div class="shell topbar-inner">
-  <a class="brand" href="#top"><img src="maikiri.svg" width="28" height="28" alt=""><span>MAI<span class="brand-accent">KIRI</span></span></a>
-  <nav aria-label="页面导航"><a href="#practice">配置检索</a><a href="#library-panel">练习库</a><a href="#resources">谱面资源</a></nav>
+  <a class="brand" href="#top"><img src="mailab.svg" width="28" height="28" alt=""><span>MAI<span class="brand-accent">LAB</span></span></a>
+  <nav aria-label="页面导航"><a href="#practice">配置检索</a><a href="#pattern-catalog">配置清单</a><a href="#library-panel">练习库</a><a href="#resources">谱面资源</a></nav>
   <span class="edition">PATTERN LAB</span>
  </div>
 </header>
 <main class="shell" id="top">
  <section class="arcade" id="practice" aria-labelledby="hero-title">
   <header class="arcade-heading">
-   <div><span class="eyebrow">FREE PLAY / PRACTICE</span><h1 id="hero-title">Maikiri</h1></div>
+   <div><span class="eyebrow">FREE PLAY / PRACTICE</span><h1 id="hero-title">Mailab</h1></div>
    <a class="button" id="adx-entry" href="#import-panel">导入 ADX</a>
   </header>
+  <div class="practice-options">
+   <label for="family-choice">练习配置 <select id="family-choice" aria-describedby="family-state family-description"></select></label>
+   <fieldset><legend>目标等级</legend><div class="level-options" id="level-options"></div></fieldset>
+  </div>
+  <div class="pattern-note"><strong id="family-state"></strong><p id="family-description"></p></div>
   <div class="cabinet" id="cabinet">
    <div class="screen">
     <div class="mode" aria-live="polite"><span id="step-number">01</span><span id="step-title">选择配置</span></div>
@@ -81,6 +86,12 @@
   </div>
  </section>
 
+ <section class="panel catalog" id="pattern-catalog" aria-labelledby="catalog-title">
+  <header class="panel-heading"><span class="step">02</span><div><span class="eyebrow">PATTERN DIRECTORY</span><h2 id="catalog-title">经典配置清单 <small id="pattern-count"></small></h2></div></header>
+  <p class="status">先按社区叫法建目录。名称可能重叠，难度取决于具体速度、持续和衔接；“待研究”条目尚不能自动检索。点击配置名称可回到练习台选择。</p>
+  <details class="fold"><summary>展开配置与参考教程</summary><div class="pattern-list" id="pattern-list"></div><p>“海胆”等历史叫法尚未找到足以确认独立结构的来源，暂不与海底谭合并。</p></details>
+ </section>
+
  <section class="panel library" id="library-panel" aria-labelledby="library-title">
   <header class="panel-heading"><span class="step">03</span><div><span class="eyebrow">LOCAL LIBRARY</span><h2 id="library-title">练习库</h2></div></header>
   <p id="library" class="library-count"></p>
@@ -98,7 +109,7 @@
    <label for="source">粘贴单谱 Simai <textarea id="source" rows="3" spellcheck="false"></textarea></label>
    <div class="import-fields">
     <label for="title">曲名 <input id="title" value="我的练习谱"></label>
-    <label for="level">单谱等级 <select id="level"><option>12</option><option>12+</option><option>13</option><option>13+</option><option>14</option></select></label>
+    <label for="level">单谱等级 <select id="level"></select></label>
     <button id="add" class="button" type="button" disabled>解析并加入</button>
    </div>
   </details>
@@ -116,11 +127,11 @@
 
  <details class="fold help">
   <summary>规则与练习策略</summary>
-  <p>基础规则可检索连续单点纵连、交互和单段 Slide。海底谭与多重 Slide 暂待研究。部分 Simai 语法超出当前解析范围。</p>
+  <p>专项检索支持连续单 Tap 纵连和两键交互。普通单点和基础 Slide 不作为专项选择。清单内其他配置均待研究，部分 Simai 语法也超出当前解析范围。</p>
   <p>选择参考片段后，练习策略按局部模型负荷比较。低于 0.9 倍为略简单，0.9–1.1 倍为接近，高于 1.1 倍为略困难。整曲等级单独筛选。</p>
  </details>
- <footer><span>Maikiri · maimai × raikiri</span><a target="_blank" rel="noopener noreferrer" href="https://github.com/ZGQmoe/maimai-pattern-lab-public">源码、需求与交接 ↗</a></footer>
+ <footer><span>Mailab · PATTERN LAB</span><a target="_blank" rel="noopener noreferrer" href="https://github.com/ZGQmoe/maimai-pattern-lab-public">源码、需求与交接 ↗</a></footer>
 </main>
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js?v=mailab-1"></script>
 </body>
 </html>
