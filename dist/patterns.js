@@ -16,7 +16,7 @@ export const patterns = [
  {value:'纵连', group:'连打与交互', caption:'JACK', icon:'jack', supported:true, description:'同键连续击打；当前规则只识别至少四个连续单 Tap，不含双押纵连。', sources:['guide','terms']},
  {value:'交互', group:'连打与交互', caption:'TRILL', icon:'trill', supported:true, description:'两个键位轮流出音符；当前规则只识别至少四个连续单 Tap，不能证明实际手序。', sources:['guide','terms']},
  {value:'快速交互', group:'连打与交互', caption:'FAST TRILL', icon:'trill', aliases:['高速交互'], description:'交互的速度专项。后续同时看间隔、持续与变速，不直接用整曲 BPM 划分。', sources:['fast']},
- {value:'双押纵连', group:'连打与交互', caption:'DOUBLE JACK', icon:'jack', aliases:['双纵'], description:'成对音符连续重复，与单 Tap 纵连分开研究。', sources:['guide']},
+ {value:'双押纵连', group:'连打与交互', caption:'DOUBLE JACK', icon:'jack', supported:true, aliases:['双纵'], description:'同一对键位的两个 Tap 连续重复，至少四次；一格出现第三个音符、非 Tap 或键对变化即断开。与单 Tap 纵连分开，不推断手序。', sources:['guide']},
  {value:'三角交互', group:'连打与交互', caption:'TRIANGLE', icon:'trill', description:'社区术语候选；三键循环的具体边界待谱面样例确认。', sources:['terms']},
  {value:'轴交互', group:'连打与交互', caption:'ANCHOR TRILL', icon:'trill', description:'带固定轴键的交互变体；保留移动、节奏及手序差异。', sources:['terms']},
  {value:'轴三角', group:'连打与交互', caption:'ANCHOR TRIANGLE', icon:'trill', description:'与轴交互相邻的社区分类，暂不合并为同一识别器。', sources:['terms']},

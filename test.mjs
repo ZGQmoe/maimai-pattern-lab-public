@@ -214,7 +214,7 @@ test('untagged original chart is found by structure, and coverage separates fail
  assert.equal(report.failed, 1);
  assert.deepEqual(Object.keys(report.reasons), ['伪 EACH（`）暂不支持']);
  assert.equal(report.levels.find(row => row.level === '13').failed, 1);
- assert.deepEqual(report.supported, ['纵连','交互']);
+ assert.deepEqual(report.supported, ['纵连','交互','双押纵连']);
  assert.ok(report.unsupported.includes('海底谭'));
  assert.ok(!('基础 Slide' in report.hits));
  assert.deepEqual(report.levels.map(row => row.level), levels);
@@ -253,4 +253,33 @@ test('firework flag f on holds is accepted and does not change timing (R01)',()=
  assert.equal(ns.length,3);assert.deepEqual(ns.map(n=>n.kind),['hold','hold','hold']);
  assert.ok(ns.every(n=>n.duration===.5));
  assert.throws(()=>p('(120){4}Chf,E'));
+});
+// 双押纵连（R02/A03）：原创最小样例，正例、反例与不误报单 Tap 纵连/交互。
+const dj=body=>analyze(p('(120){16}'+body+',E')).filter(s=>s.family==='双押纵连');
+test('double jack: same key pair repeated >=4 times is found, with per-slot rate and evidence',()=>{
+ const hits=dj('3/4,3/4,3/4,3/4');
+ assert.equal(hits.length,1);assert.equal(hits[0].notes.length,8);
+ const f=hits[0].features;
+ assert.equal(f.count,8);assert.ok(Math.abs(f.rate-8)<1e-9,'rate counts slots, not the 0-gap inside a pair');
+ assert.match(f.evidence,/3 \+ 4/);
+ assert.equal(dj('34,34,34,34').length,1,'compact chord syntax');
+ assert.equal(dj('4/3,3/4,4/3,3/4').length,1,'token order inside a slot does not matter');
+});
+test('double jack: boundaries do not become false hits',()=>{
+ for(const body of ['3/4,3/4,3/4','3/4,3/4,3/5,3/4,3/4','3/4,3/4,3/4/6,3/4,3/4','3/4,3/4,3h[4:1]/4,3/4,3/4','3/4,3/4,3/4,E,3/4']){
+  assert.equal(dj(body).length,0,body);
+ }
+ assert.equal(dj('3/4,3/4,3/4,3/4,3/4,3/4,3/4,3/4').length,1,'one run is one hit');
+});
+test('double jack never leaks into single-tap jack or trill, and mirror/rotation share identity',()=>{
+ const fam=body=>[...new Set(analyze(p('(120){16}'+body+',E')).map(s=>s.family))];
+ assert.deepEqual(fam('3/4,3/4,3/4,3/4'),['双押纵连']);
+ assert.ok(!fam('3,3,3,3').includes('双押纵连'));
+ const a=p('(120){16}1/2,1/2,1/2,1/2,E'),b=p('(120){16}5/4,5/4,5/4,5/4,E');
+ assert.equal(analyze(a)[0].signature,analyze(b)[0].signature);
+ // the same note count at the same level is found without any reference segment
+ const chart={title:'Original Double Jack',level:'13',difficulty:'x',body:'(120){16}3/4,3/4,3/4,3/4,E',offset:0};
+ const segs=analyze(parse(chart));
+ assert.equal(searchSegments(segs,{family:'双押纵连',level:'13'}).items.length,1);
+ assert.equal(searchSegments(segs,{family:'纵连',level:'13'}).items.length,0);
 });

@@ -139,6 +139,19 @@ export function analyze(chart){
    while(j<ns.length&&singleTapLane(j)===((j-i)%2===0?a:b)&&ns[j].t>ns[j-1].t&&ns[j].t-ns[j-1].t<=.6)j++;
   if(j-i>=4){add(i,j,'交互');i=j;}else i++;
  }
+ // 双押纵连：连续 ≥4 个时间格，每格恰好是同一对不同键位的两个 Tap，相邻间隔 ≤ 0.6 秒。
+ // 一格内出现第三个 Note、Hold/Touch/Slide，或键对变化都会断开；与单 Tap 纵连互不重叠。
+ const pairAt=i=>{
+  const a=ns[i],b=ns[i+1];
+  if(!a||!b||a.slot!==b.slot||ns[i+2]?.slot===a.slot||ns[i-1]?.slot===a.slot)return null;
+  if(a.kind!=='tap'||b.kind!=='tap'||lane(a)===null||lane(b)===null||lane(a)===lane(b))return null;
+  return [lane(a),lane(b)].sort().join();
+ };
+ for(let i=0;i+7<ns.length;){
+  const key=pairAt(i);let j=i+2;
+  if(key!==null)while(pairAt(j)===key&&ns[j].t>ns[j-1].t&&ns[j].t-ns[j-1].t<=.6)j+=2;
+  if(key!==null&&j-i>=8){add(i,j,'双押纵连');i=j;}else i++;
+ }
  ns.forEach((n,i)=>{if(n.kind==='slide')add(i,i+1,'基础 Slide');});
  return segments;
 }
@@ -153,7 +166,9 @@ const spanNames=['同键','相邻','隔一键','隔两键','对侧'];
 const laneName=n=>n.pos;
 // Explainable local features. They describe the matched notes only and are not a calibrated difficulty.
 export function segmentFeatures(segment){
- const ns=segment.notes,gaps=[];
+ const all=segment.notes,double=segment.family==='双押纵连';
+ // 双押每格两个 Note，时间只按格计，否则同格间隔 0 会污染速率。
+ const ns=double?all.filter((_,i)=>i%2===0):all,gaps=[];
  for(let i=1;i<ns.length;i++)gaps.push(ns[i].t-ns[i-1].t);
  const minGap=gaps.length?Math.min(...gaps):0,maxGap=gaps.length?Math.max(...gaps):0;
  const span=ns.at(-1).t-ns[0].t,meanGap=gaps.length?span/gaps.length:0;
@@ -161,8 +176,8 @@ export function segmentFeatures(segment){
  const even=gaps.length>0&&(maxGap-minGap)<=Math.max(.004,meanGap*.05);
  const beatGap=ns.length>1?(ns.at(-1).beat-ns[0].beat)/(ns.length-1):0;
  const noteValue=beatGap>0?Math.round(4/beatGap*10)/10:null;
- const bpms=[...new Set(ns.map(n=>n.bpm))];
- const lanes=[...new Set(ns.map(laneName))];
+ const bpms=[...new Set(all.map(n=>n.bpm))];
+ const lanes=[...new Set(all.map(laneName))];
  let spread=null,evidence='';
  if(segment.family==='纵连'){
   spread=0;
@@ -170,10 +185,13 @@ export function segmentFeatures(segment){
  }else if(segment.family==='交互'){
   const d=Math.abs(+lanes[0]-+lanes[1]);spread=Math.min(d,8-d);
   evidence='键 '+lanes[0]+' / '+lanes[1]+' 交替 '+ns.length+' 个单 Tap（'+spanNames[spread]+'）；每个时间格只有这一个 Note，相邻间隔 ≤ 0.6 秒';
+ }else if(double){
+  const pair=[...new Set(all.map(laneName))],d=Math.abs(+pair[0]-+pair[1]);spread=Math.min(d,8-d);
+  evidence='键 '+pair[0]+' + '+pair[1]+' 同时押重复 '+ns.length+' 次（'+all.length+' 个 Tap）；每格恰好这一对 Tap，相邻间隔 ≤ 0.6 秒';
  }else if(segment.family==='基础 Slide'){
   evidence='单条 Slide '+ns[0].raw;
  }
- return {count:ns.length,minGap,maxGap,meanGap,rate,even,noteValue,bpms,lanes,spread,spreadName:spread===null?'':spanNames[spread],evidence};
+ return {count:all.length,minGap,maxGap,meanGap,rate,even,noteValue,bpms,lanes,spread,spreadName:spread===null?'':spanNames[spread],evidence};
 }
 const sorters={
  load:(a,b)=>a.segment.load-b.segment.load,
