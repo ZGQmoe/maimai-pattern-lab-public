@@ -29,7 +29,7 @@ function readToken(token,bpm,where){
  const base={pos,end:pos,shape:'',path:[],duration:0,wait:0,break:mods.includes('b'),ex:mods.includes('x'),headless:/[?!]/.test(mods)};
  let rest=token.slice(head[0].length);
  if(!rest)return [{...base,kind:touch?'touch':'tap'}];
- const hold=rest.match(/^([bx]*)h([bx]*)(?:\[([^\]]+)\])?([bx]*)$/);
+ const hold=rest.match(/^([bxf]*)h([bxf]*)(?:\[([^\]]+)\])?([bxf]*)$/);
  if(hold){
   if(!hold[3])throw Error(where+'Hold 缺少时值：'+token);
   const {length}=readDuration(hold[3],bpm);

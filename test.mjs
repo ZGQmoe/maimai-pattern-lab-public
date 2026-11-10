@@ -248,3 +248,9 @@ test('chart written with {#seconds} is still found by structure (interaction, or
  const found=analyze(p('(120){#0.25}1,5,1,5,1,5,E')).filter(s=>s.family==='交互');
  assert.equal(found.length,1);assert.equal(found[0].notes.length,6);
 });
+test('firework flag f on holds is accepted and does not change timing (R01)',()=>{
+ const ns=p('(120){4}Chf[4:1],1hf[4:1],1fh[4:1],E').notes;
+ assert.equal(ns.length,3);assert.deepEqual(ns.map(n=>n.kind),['hold','hold','hold']);
+ assert.ok(ns.every(n=>n.duration===.5));
+ assert.throws(()=>p('(120){4}Chf,E'));
+});
