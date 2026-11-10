@@ -11,7 +11,7 @@ export function readCharts(text,name='导入谱面',level='12'){
  return ids.length?ids.map(k=>({title:fields.title||name,level:fields['lv_'+k.slice(6)]||'未知',body:fields[k],offset:Number(fields.first||0),difficulty:k})): [{title:name,level,body:text,offset:0,difficulty:'自定义'}];
 }
 // Slide shapes accepted by the restricted parser. Geometry in the preview is approximate for curved shapes.
-const slideShape=/(pp|qq|V[1-8]|[-<>^vpqszw])([1-8])(\[[^\]]+\])?([bx]*)/y;
+const slideShape=/(pp|qq|V[1-8]|[-<>^vpqszw])([1-8])([bx]*)(\[[^\]]+\])?([bx]*)/y;
 function readDuration(text,bpm){
  let m;
  const beats=(spec,tempo)=>{const d=spec.match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);return d?240/tempo*+d[2]/+d[1]:null;};
@@ -29,7 +29,7 @@ function readToken(token,bpm,where){
  const base={pos,end:pos,shape:'',path:[],duration:0,wait:0,break:mods.includes('b'),ex:mods.includes('x'),headless:/[?!]/.test(mods)};
  let rest=token.slice(head[0].length);
  if(!rest)return [{...base,kind:touch?'touch':'tap'}];
- const hold=rest.match(/^([bx]*)h([bx]*)(?:\[([^\]]+)\])?([bx]*)$/);
+ const hold=rest.match(/^([bxf]*)h([bxf]*)(?:\[([^\]]+)\])?([bxf]*)$/);
  if(hold){
   if(!hold[3])throw Error(where+'Hold 缺少时值：'+token);
   const {length}=readDuration(hold[3],bpm);
@@ -44,8 +44,8 @@ function readToken(token,bpm,where){
   for(let m;at<group.length&&(slideShape.lastIndex=at,m=slideShape.exec(group));at=slideShape.lastIndex){
    const shape=m[1][0]==='V'?'V':m[1];
    path.push({shape,end:m[2],turn:m[1][0]==='V'?m[1][1]:null});
-   specs.push(m[3]?m[3].slice(1,-1):null);
-   if(m[4].includes('b'))isBreak=true;
+   specs.push(m[4]?m[4].slice(1,-1):null);
+   if((m[3]+m[5]).includes('b'))isBreak=true;
   }
   if(at!==group.length||!path.length)fail();
   // Either one total duration on the last segment, or one per segment.
@@ -60,13 +60,14 @@ function readToken(token,bpm,where){
  return notes;
 }
 export function parse(chart){
- let bpm=120,division=4,t=0,beat=0; const notes=[],warnings=[];
+ let bpm=120,division=4,secStep=null,t=0,beat=0; const notes=[],warnings=[];
  const body=chart.body.replace(/\|\|[^\n]*/g,'').replace(/\s+/g,'');
  const chunks=body.split(',');
  if(chunks.length>30000)throw Error('片段过多');
  for(let i=0;i<chunks.length;i++){
   let s=chunks[i]; if(s==='E')break;
-  s=s.replace(/\(([\d.]+)\)|\{(\d+)\}/g,(_,b,d)=>{if(b)bpm=+b;if(d)division=+d;if(!(bpm>0&&bpm<=1000&&division>0&&division<=384))throw Error('BPM 或细分超出范围');return '';});
+  // {#秒} 让每个逗号固定为若干秒；<HS*x> 只影响流速，不影响时间，可安全忽略。
+  s=s.replace(/\(([\d.]+)\)|\{(\d+)\}|\{#([\d.]+)\}|<HS\*[\d.]+>/g,(_,b,d,sec)=>{if(b)bpm=+b;if(d){division=+d;secStep=null;}if(sec)secStep=+sec;if(!(bpm>0&&bpm<=1000&&division>0&&division<=384&&(secStep===null||secStep>0&&secStep<=60)))throw Error('BPM 或细分超出范围');return '';});
   if(s){
    // Fail closed: syntax outside the supported subset must not silently become a plausible analysis.
    if(s.includes('`'))throw Error('第 '+(i+1)+' 格包含暂不支持的高级语法（伪 EACH）');
@@ -78,7 +79,7 @@ export function parse(chart){
     for(const note of readToken(token,bpm,'第 '+(i+1)+' 格'))notes.push({...note,t:t+(chart.offset||0),beat,bpm,slot:i,raw:token});
    }
   }
-  const step=240/bpm/division;t+=step;beat+=4/division;
+  const step=secStep??240/bpm/division;t+=step;beat+=secStep===null?4/division:secStep*bpm/60;
  }
  if(!notes.length)throw Error('没有可分析的 Note');
  return {...chart,notes,warnings,duration:t};
@@ -138,6 +139,19 @@ export function analyze(chart){
    while(j<ns.length&&singleTapLane(j)===((j-i)%2===0?a:b)&&ns[j].t>ns[j-1].t&&ns[j].t-ns[j-1].t<=.6)j++;
   if(j-i>=4){add(i,j,'交互');i=j;}else i++;
  }
+ // 双押纵连：连续 ≥4 个时间格，每格恰好是同一对不同键位的两个 Tap，相邻间隔 ≤ 0.6 秒。
+ // 一格内出现第三个 Note、Hold/Touch/Slide，或键对变化都会断开；与单 Tap 纵连互不重叠。
+ const pairAt=i=>{
+  const a=ns[i],b=ns[i+1];
+  if(!a||!b||a.slot!==b.slot||ns[i+2]?.slot===a.slot||ns[i-1]?.slot===a.slot)return null;
+  if(a.kind!=='tap'||b.kind!=='tap'||lane(a)===null||lane(b)===null||lane(a)===lane(b))return null;
+  return [lane(a),lane(b)].sort().join();
+ };
+ for(let i=0;i+7<ns.length;){
+  const key=pairAt(i);let j=i+2;
+  if(key!==null)while(pairAt(j)===key&&ns[j].t>ns[j-1].t&&ns[j].t-ns[j-1].t<=.6)j+=2;
+  if(key!==null&&j-i>=8){add(i,j,'双押纵连');i=j;}else i++;
+ }
  ns.forEach((n,i)=>{if(n.kind==='slide')add(i,i+1,'基础 Slide');});
  return segments;
 }
@@ -152,7 +166,9 @@ const spanNames=['同键','相邻','隔一键','隔两键','对侧'];
 const laneName=n=>n.pos;
 // Explainable local features. They describe the matched notes only and are not a calibrated difficulty.
 export function segmentFeatures(segment){
- const ns=segment.notes,gaps=[];
+ const all=segment.notes,double=segment.family==='双押纵连';
+ // 双押每格两个 Note，时间只按格计，否则同格间隔 0 会污染速率。
+ const ns=double?all.filter((_,i)=>i%2===0):all,gaps=[];
  for(let i=1;i<ns.length;i++)gaps.push(ns[i].t-ns[i-1].t);
  const minGap=gaps.length?Math.min(...gaps):0,maxGap=gaps.length?Math.max(...gaps):0;
  const span=ns.at(-1).t-ns[0].t,meanGap=gaps.length?span/gaps.length:0;
@@ -160,8 +176,8 @@ export function segmentFeatures(segment){
  const even=gaps.length>0&&(maxGap-minGap)<=Math.max(.004,meanGap*.05);
  const beatGap=ns.length>1?(ns.at(-1).beat-ns[0].beat)/(ns.length-1):0;
  const noteValue=beatGap>0?Math.round(4/beatGap*10)/10:null;
- const bpms=[...new Set(ns.map(n=>n.bpm))];
- const lanes=[...new Set(ns.map(laneName))];
+ const bpms=[...new Set(all.map(n=>n.bpm))];
+ const lanes=[...new Set(all.map(laneName))];
  let spread=null,evidence='';
  if(segment.family==='纵连'){
   spread=0;
@@ -169,10 +185,13 @@ export function segmentFeatures(segment){
  }else if(segment.family==='交互'){
   const d=Math.abs(+lanes[0]-+lanes[1]);spread=Math.min(d,8-d);
   evidence='键 '+lanes[0]+' / '+lanes[1]+' 交替 '+ns.length+' 个单 Tap（'+spanNames[spread]+'）；每个时间格只有这一个 Note，相邻间隔 ≤ 0.6 秒';
+ }else if(double){
+  const pair=[...new Set(all.map(laneName))],d=Math.abs(+pair[0]-+pair[1]);spread=Math.min(d,8-d);
+  evidence='键 '+pair[0]+' + '+pair[1]+' 同时押重复 '+ns.length+' 次（'+all.length+' 个 Tap）；每格恰好这一对 Tap，相邻间隔 ≤ 0.6 秒';
  }else if(segment.family==='基础 Slide'){
   evidence='单条 Slide '+ns[0].raw;
  }
- return {count:ns.length,minGap,maxGap,meanGap,rate,even,noteValue,bpms,lanes,spread,spreadName:spread===null?'':spanNames[spread],evidence};
+ return {count:all.length,minGap,maxGap,meanGap,rate,even,noteValue,bpms,lanes,spread,spreadName:spread===null?'':spanNames[spread],evidence};
 }
 const sorters={
  load:(a,b)=>a.segment.load-b.segment.load,

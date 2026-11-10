@@ -1,6 +1,6 @@
-import {readCharts,parse,analyze,demos,levels,searchSegments,isPracticeSegment,previewWindow,coverage,sortNames} from './core.js?v=mailab-2';
+import {readCharts,parse,analyze,demos,levels,searchSegments,isPracticeSegment,previewWindow,coverage,sortNames} from './core.js?v=mailab-3';
 import {sampleTexts} from './samples.js';
-import {createPreview} from './preview.js?v=mailab-2';
+import {createPreview} from './preview.js?v=mailab-3';
 import {patterns,patternSources} from './patterns.js';
 import {chartData,loadCharts,saveCharts,clearCharts} from './library.js';
 

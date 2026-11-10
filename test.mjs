@@ -129,7 +129,7 @@ test('slide syntax: chains, shared heads, V, pp/qq, BPM-override and second-base
  const [seconds] = p('(120)1-5[0.5##1.5],E').notes;
  assert.deepEqual([seconds.wait, seconds.duration], [.5, 1.5]);
  assert.equal(p('(120)Ch[4:1],E').notes[0].kind, 'hold');
- for (const bad of ['1-5[4:1]-3', '1-5[4:1]-3[4:1]-6', 'C-5[4:1]', '1-9[4:1]', '1`2', '1h', '<HS*2>1']) assert.throws(() => p('(120)' + bad + ',E'), bad);
+ for (const bad of ['1-5[4:1]-3', '1-5[4:1]-3[4:1]-6', 'C-5[4:1]', '1-9[4:1]', '1`2', '1h', '<HS*>1', '<FOO*2>1']) assert.throws(() => p('(120)' + bad + ',E'), bad);
 });
 
 test('no reference needed: Trill at one level returns only Trill hits, across songs', () => {
@@ -214,7 +214,7 @@ test('untagged original chart is found by structure, and coverage separates fail
  assert.equal(report.failed, 1);
  assert.deepEqual(Object.keys(report.reasons), ['伪 EACH（`）暂不支持']);
  assert.equal(report.levels.find(row => row.level === '13').failed, 1);
- assert.deepEqual(report.supported, ['纵连','交互']);
+ assert.deepEqual(report.supported, ['纵连','交互','双押纵连']);
  assert.ok(report.unsupported.includes('海底谭'));
  assert.ok(!('基础 Slide' in report.hits));
  assert.deepEqual(report.levels.map(row => row.level), levels);
@@ -230,4 +230,56 @@ test('slide identity: < > direction follows each segment start; chain vertices c
  assert.equal(sig('1-3-1[4:1]'),sig('1-7-1[4:1]'));     // mirror chain
  assert.equal(sig('1V35[4:1]'),sig('1V75[4:1]'));       // mirror V turn
  assert.equal(sig('1pp4[4:1]'),sig('1qq6[4:1]'));       // mirror pp/qq
+});
+// R01/R02 compatibility: Simai constructs seen in real maidata files, checked with original minimal charts.
+test('Simai {#seconds} division, <HS*x> speed tags and break before slide duration (R01/A09)',()=>{
+ const sec=p('(120){#0.5}1,2,3,4,E');
+ assert.deepEqual(sec.notes.map(n=>n.t),[0,.5,1,1.5]);
+ // beats follow seconds, so a later {n} switch resumes from the right beat position
+ assert.equal(sec.notes[3].beat,3);
+ assert.deepEqual(p('(120){#0.25}1,2,{4}3,E').notes.map(n=>n.t),[0,.25,.5]);
+ assert.deepEqual(p('(120){4}<HS*2.0>1,<HS*0.5>2,E').notes.map(n=>n.t),[0,.5]);
+ const br=p('(120){4}1-5b[4:1],2-6[4:1]b,E').notes;
+ assert.equal(br[0].break,true);assert.equal(br[1].break,true);assert.equal(br[0].duration,.5);
+ assert.throws(()=>p('(120){#0}1,E'));
+ assert.throws(()=>p('(120){#0.5}1`2,E'),/伪 EACH/);
+});
+test('chart written with {#seconds} is still found by structure (interaction, original sample)',()=>{
+ const found=analyze(p('(120){#0.25}1,5,1,5,1,5,E')).filter(s=>s.family==='交互');
+ assert.equal(found.length,1);assert.equal(found[0].notes.length,6);
+});
+test('firework flag f on holds is accepted and does not change timing (R01)',()=>{
+ const ns=p('(120){4}Chf[4:1],1hf[4:1],1fh[4:1],E').notes;
+ assert.equal(ns.length,3);assert.deepEqual(ns.map(n=>n.kind),['hold','hold','hold']);
+ assert.ok(ns.every(n=>n.duration===.5));
+ assert.throws(()=>p('(120){4}Chf,E'));
+});
+// 双押纵连（R02/A03）：原创最小样例，正例、反例与不误报单 Tap 纵连/交互。
+const dj=body=>analyze(p('(120){16}'+body+',E')).filter(s=>s.family==='双押纵连');
+test('double jack: same key pair repeated >=4 times is found, with per-slot rate and evidence',()=>{
+ const hits=dj('3/4,3/4,3/4,3/4');
+ assert.equal(hits.length,1);assert.equal(hits[0].notes.length,8);
+ const f=hits[0].features;
+ assert.equal(f.count,8);assert.ok(Math.abs(f.rate-8)<1e-9,'rate counts slots, not the 0-gap inside a pair');
+ assert.match(f.evidence,/3 \+ 4/);
+ assert.equal(dj('34,34,34,34').length,1,'compact chord syntax');
+ assert.equal(dj('4/3,3/4,4/3,3/4').length,1,'token order inside a slot does not matter');
+});
+test('double jack: boundaries do not become false hits',()=>{
+ for(const body of ['3/4,3/4,3/4','3/4,3/4,3/5,3/4,3/4','3/4,3/4,3/4/6,3/4,3/4','3/4,3/4,3h[4:1]/4,3/4,3/4','3/4,3/4,3/4,E,3/4']){
+  assert.equal(dj(body).length,0,body);
+ }
+ assert.equal(dj('3/4,3/4,3/4,3/4,3/4,3/4,3/4,3/4').length,1,'one run is one hit');
+});
+test('double jack never leaks into single-tap jack or trill, and mirror/rotation share identity',()=>{
+ const fam=body=>[...new Set(analyze(p('(120){16}'+body+',E')).map(s=>s.family))];
+ assert.deepEqual(fam('3/4,3/4,3/4,3/4'),['双押纵连']);
+ assert.ok(!fam('3,3,3,3').includes('双押纵连'));
+ const a=p('(120){16}1/2,1/2,1/2,1/2,E'),b=p('(120){16}5/4,5/4,5/4,5/4,E');
+ assert.equal(analyze(a)[0].signature,analyze(b)[0].signature);
+ // the same note count at the same level is found without any reference segment
+ const chart={title:'Original Double Jack',level:'13',difficulty:'x',body:'(120){16}3/4,3/4,3/4,3/4,E',offset:0};
+ const segs=analyze(parse(chart));
+ assert.equal(searchSegments(segs,{family:'双押纵连',level:'13'}).items.length,1);
+ assert.equal(searchSegments(segs,{family:'纵连',level:'13'}).items.length,0);
 });
