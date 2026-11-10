@@ -11,7 +11,7 @@ export function readCharts(text,name='导入谱面',level='12'){
  return ids.length?ids.map(k=>({title:fields.title||name,level:fields['lv_'+k.slice(6)]||'未知',body:fields[k],offset:Number(fields.first||0),difficulty:k})): [{title:name,level,body:text,offset:0,difficulty:'自定义'}];
 }
 // Slide shapes accepted by the restricted parser. Geometry in the preview is approximate for curved shapes.
-const slideShape=/(pp|qq|V[1-8]|[-<>^vpqszw])([1-8])(\[[^\]]+\])?([bx]*)/y;
+const slideShape=/(pp|qq|V[1-8]|[-<>^vpqszw])([1-8])([bx]*)(\[[^\]]+\])?([bx]*)/y;
 function readDuration(text,bpm){
  let m;
  const beats=(spec,tempo)=>{const d=spec.match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);return d?240/tempo*+d[2]/+d[1]:null;};
@@ -44,8 +44,8 @@ function readToken(token,bpm,where){
   for(let m;at<group.length&&(slideShape.lastIndex=at,m=slideShape.exec(group));at=slideShape.lastIndex){
    const shape=m[1][0]==='V'?'V':m[1];
    path.push({shape,end:m[2],turn:m[1][0]==='V'?m[1][1]:null});
-   specs.push(m[3]?m[3].slice(1,-1):null);
-   if(m[4].includes('b'))isBreak=true;
+   specs.push(m[4]?m[4].slice(1,-1):null);
+   if((m[3]+m[5]).includes('b'))isBreak=true;
   }
   if(at!==group.length||!path.length)fail();
   // Either one total duration on the last segment, or one per segment.
@@ -60,13 +60,14 @@ function readToken(token,bpm,where){
  return notes;
 }
 export function parse(chart){
- let bpm=120,division=4,t=0,beat=0; const notes=[],warnings=[];
+ let bpm=120,division=4,secStep=null,t=0,beat=0; const notes=[],warnings=[];
  const body=chart.body.replace(/\|\|[^\n]*/g,'').replace(/\s+/g,'');
  const chunks=body.split(',');
  if(chunks.length>30000)throw Error('片段过多');
  for(let i=0;i<chunks.length;i++){
   let s=chunks[i]; if(s==='E')break;
-  s=s.replace(/\(([\d.]+)\)|\{(\d+)\}/g,(_,b,d)=>{if(b)bpm=+b;if(d)division=+d;if(!(bpm>0&&bpm<=1000&&division>0&&division<=384))throw Error('BPM 或细分超出范围');return '';});
+  // {#秒} 让每个逗号固定为若干秒；<HS*x> 只影响流速，不影响时间，可安全忽略。
+  s=s.replace(/\(([\d.]+)\)|\{(\d+)\}|\{#([\d.]+)\}|<HS\*[\d.]+>/g,(_,b,d,sec)=>{if(b)bpm=+b;if(d){division=+d;secStep=null;}if(sec)secStep=+sec;if(!(bpm>0&&bpm<=1000&&division>0&&division<=384&&(secStep===null||secStep>0&&secStep<=60)))throw Error('BPM 或细分超出范围');return '';});
   if(s){
    // Fail closed: syntax outside the supported subset must not silently become a plausible analysis.
    if(s.includes('`'))throw Error('第 '+(i+1)+' 格包含暂不支持的高级语法（伪 EACH）');
@@ -78,7 +79,7 @@ export function parse(chart){
     for(const note of readToken(token,bpm,'第 '+(i+1)+' 格'))notes.push({...note,t:t+(chart.offset||0),beat,bpm,slot:i,raw:token});
    }
   }
-  const step=240/bpm/division;t+=step;beat+=4/division;
+  const step=secStep??240/bpm/division;t+=step;beat+=secStep===null?4/division:secStep*bpm/60;
  }
  if(!notes.length)throw Error('没有可分析的 Note');
  return {...chart,notes,warnings,duration:t};

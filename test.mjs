@@ -129,7 +129,7 @@ test('slide syntax: chains, shared heads, V, pp/qq, BPM-override and second-base
  const [seconds] = p('(120)1-5[0.5##1.5],E').notes;
  assert.deepEqual([seconds.wait, seconds.duration], [.5, 1.5]);
  assert.equal(p('(120)Ch[4:1],E').notes[0].kind, 'hold');
- for (const bad of ['1-5[4:1]-3', '1-5[4:1]-3[4:1]-6', 'C-5[4:1]', '1-9[4:1]', '1`2', '1h', '<HS*2>1']) assert.throws(() => p('(120)' + bad + ',E'), bad);
+ for (const bad of ['1-5[4:1]-3', '1-5[4:1]-3[4:1]-6', 'C-5[4:1]', '1-9[4:1]', '1`2', '1h', '<HS*>1', '<FOO*2>1']) assert.throws(() => p('(120)' + bad + ',E'), bad);
 });
 
 test('no reference needed: Trill at one level returns only Trill hits, across songs', () => {
@@ -230,4 +230,21 @@ test('slide identity: < > direction follows each segment start; chain vertices c
  assert.equal(sig('1-3-1[4:1]'),sig('1-7-1[4:1]'));     // mirror chain
  assert.equal(sig('1V35[4:1]'),sig('1V75[4:1]'));       // mirror V turn
  assert.equal(sig('1pp4[4:1]'),sig('1qq6[4:1]'));       // mirror pp/qq
+});
+// R01/R02 compatibility: Simai constructs seen in real maidata files, checked with original minimal charts.
+test('Simai {#seconds} division, <HS*x> speed tags and break before slide duration (R01/A09)',()=>{
+ const sec=p('(120){#0.5}1,2,3,4,E');
+ assert.deepEqual(sec.notes.map(n=>n.t),[0,.5,1,1.5]);
+ // beats follow seconds, so a later {n} switch resumes from the right beat position
+ assert.equal(sec.notes[3].beat,3);
+ assert.deepEqual(p('(120){#0.25}1,2,{4}3,E').notes.map(n=>n.t),[0,.25,.5]);
+ assert.deepEqual(p('(120){4}<HS*2.0>1,<HS*0.5>2,E').notes.map(n=>n.t),[0,.5]);
+ const br=p('(120){4}1-5b[4:1],2-6[4:1]b,E').notes;
+ assert.equal(br[0].break,true);assert.equal(br[1].break,true);assert.equal(br[0].duration,.5);
+ assert.throws(()=>p('(120){#0}1,E'));
+ assert.throws(()=>p('(120){#0.5}1`2,E'),/伪 EACH/);
+});
+test('chart written with {#seconds} is still found by structure (interaction, original sample)',()=>{
+ const found=analyze(p('(120){#0.25}1,5,1,5,1,5,E')).filter(s=>s.family==='交互');
+ assert.equal(found.length,1);assert.equal(found[0].notes.length,6);
 });
